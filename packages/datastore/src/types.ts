@@ -15,6 +15,8 @@ import { PredicateAll } from './predicates';
 import { GRAPHQL_AUTH_MODE } from '@aws-amplify/api-graphql';
 import { Adapter } from './storage/adapter';
 
+export type Scalar<T> = T extends Array<infer InnerType> ? InnerType : T;
+
 //#region Schema types
 export type Schema = UserSchema & {
 	version: string;
@@ -284,9 +286,14 @@ export function isGraphQLScalarType(
 	return obj && GraphQLScalarType[obj] !== undefined;
 }
 
-export type ModelFieldType = { model: string };
-export function isModelFieldType(obj: any): obj is ModelFieldType {
-	const modelField: keyof ModelFieldType = 'model';
+export type ModelFieldType<T extends PersistentModel> = {
+	model: string;
+	modelConstructor: PersistentModelConstructor<T>;
+};
+export function isModelFieldType<T extends PersistentModel>(
+	obj: any
+): obj is ModelFieldType<T> {
+	const modelField: keyof ModelFieldType<T> = 'model';
 	if (obj && obj[modelField]) return true;
 
 	return false;
@@ -308,14 +315,14 @@ export function isEnumFieldType(obj: any): obj is EnumFieldType {
 	return false;
 }
 
-export type ModelField = {
+export type ModelField<T extends PersistentModel> = {
 	name: string;
 	type:
 		| keyof Omit<
 				typeof GraphQLScalarType,
 				'getJSType' | 'getValidationFunction'
 		  >
-		| ModelFieldType
+		| ModelFieldType<T>
 		| NonModelFieldType
 		| EnumFieldType;
 	isArray: boolean;
@@ -341,6 +348,7 @@ export type PersistentModelConstructor<
 > = {
 	new (init: ModelInit<T, K>): T;
 	copyOf(src: T, mutator: (draft: MutableModel<T, K>) => void): T;
+	__meta: SchemaModel;
 };
 
 export type TypeConstructorMap = Record<
