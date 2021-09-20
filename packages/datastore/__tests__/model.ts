@@ -1,10 +1,16 @@
+// import {
+// 	// ModelInit,
+// 	// MutableModel,
+// 	// PersistentModelConstructor,
+// } from '@aws-amplify/datastore';
+
 import {
+	initSchema,
+	NonModelTypeConstructor,
 	ModelInit,
 	MutableModel,
 	PersistentModelConstructor,
-} from '@aws-amplify/datastore';
-
-import { initSchema, NonModelTypeConstructor } from '../src/index';
+} from '../src/index';
 import { newSchema } from './schema';
 
 declare class BlogModel {
@@ -126,7 +132,7 @@ const {
 	PostMetadata: NonModelTypeConstructor<PostMetadataType>;
 	Nested: NonModelTypeConstructor<NestedType>;
 };
-``;
+
 export {
 	Author,
 	Post,
