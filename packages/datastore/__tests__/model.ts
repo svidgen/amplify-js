@@ -1,9 +1,3 @@
-// import {
-// 	// ModelInit,
-// 	// MutableModel,
-// 	// PersistentModelConstructor,
-// } from '@aws-amplify/datastore';
-
 import {
 	initSchema,
 	NonModelTypeConstructor,
@@ -132,6 +126,7 @@ const {
 	PostMetadata: NonModelTypeConstructor<PostMetadataType>;
 	Nested: NonModelTypeConstructor<NestedType>;
 };
+``;
 
 export {
 	Author,
