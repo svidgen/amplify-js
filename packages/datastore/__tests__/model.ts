@@ -4,6 +4,7 @@ import {
 	ModelInit,
 	MutableModel,
 	PersistentModelConstructor,
+	Schema,
 } from '../src/index';
 import { newSchema } from './schema';
 
@@ -138,4 +139,5 @@ export {
 	Person,
 	PostMetadata,
 	Nested,
+	newSchema as schema,
 };
