@@ -533,13 +533,6 @@ const createModelClass = <T extends PersistentModel>(
 
 	Object.defineProperty(clazz, 'name', { value: modelDefinition.name });
 
-	// TODO: ok ... the metadata we attach here actually needs to be a
-	// new type of thing that can be recursively explored.
-	// ... arrggghhh ...
-	Object.defineProperty(clazz, '__meta', {
-		value: modelDefinition,
-	});
-
 	return clazz;
 };
 
