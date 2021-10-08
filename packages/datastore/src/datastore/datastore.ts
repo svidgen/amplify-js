@@ -892,10 +892,10 @@ class DataStore {
 					builder: modelConstructor,
 					schema: modelDefinition,
 				});
-				const query = (idOrCriteria as SingularModelPredicateExtender<T>)(
+				const predicate = (idOrCriteria as SingularModelPredicateExtender<T>)(
 					seedPredicate
-				);
-				result = (await query.__query.fetch(this.storage)) as T[];
+				).__query;
+				result = (await predicate.fetch(this.storage)) as T[];
 				result = inMemoryPagination(result, pagination);
 			}
 		}
@@ -1093,7 +1093,7 @@ class DataStore {
 		idOrCriteria?: string | SingularModelPredicateExtender<T>
 	): Observable<SubscriptionMessage<T>> => {
 		let predicate: ModelPredicate<T>;
-		let query: GroupCondition;
+		let executivePredicate: GroupCondition;
 
 		const modelConstructor =
 			modelOrConstructor && isValidModelConstructor(modelOrConstructor)
@@ -1146,8 +1146,9 @@ class DataStore {
 				builder: modelOrConstructor as PersistentModelConstructor<T>,
 				schema: getModelDefinition(modelConstructor),
 			});
-			query = (idOrCriteria as SingularModelPredicateExtender<T>)(seedPredicate)
-				.__query;
+			executivePredicate = (idOrCriteria as SingularModelPredicateExtender<T>)(
+				seedPredicate
+			).__query;
 		}
 
 		return new Observable<SubscriptionMessage<T>>(observer => {
@@ -1161,7 +1162,10 @@ class DataStore {
 					.filter(({ model }) => namespaceResolver(model) === USER)
 					.subscribe({
 						next: async item => {
-							if (!query || (await query.matches(item))) {
+							if (
+								!executivePredicate ||
+								(await executivePredicate.matches(item))
+							) {
 								observer.next(item as SubscriptionMessage<T>);
 							}
 						},
