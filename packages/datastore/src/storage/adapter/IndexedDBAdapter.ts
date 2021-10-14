@@ -189,6 +189,14 @@ class IndexedDBAdapter implements Adapter {
 		storeOrStoreName: idb.IDBPObjectStore | string,
 		id: string
 	): Promise<T> {
+		console.log(
+			'_get',
+			typeof storeOrStoreName === 'string'
+				? storeOrStoreName
+				: storeOrStoreName.name,
+			id
+		);
+
 		let index: idb.IDBPIndex;
 
 		if (typeof storeOrStoreName === 'string') {
@@ -201,6 +209,28 @@ class IndexedDBAdapter implements Adapter {
 
 		return await index.get(id);
 	}
+
+	// private async _find<T>(
+	// 	storeOrStoreName: idb.IDBPObjectStore | string,
+	// 	indexName: string,
+	// 	id: string
+	// ): Promise<T[]> {
+	// 	let store: idb.IDBPObjectStore;
+
+	// 	if (typeof storeOrStoreName === 'string') {
+	// 		const storeName = storeOrStoreName;
+	// 		store = this.db.transaction(storeName, 'readonly').store;
+	// 	} else {
+	// 		store = storeOrStoreName;
+	// 	}
+
+	// 	try {
+	// 		return store.index(indexName).getAll(id);
+	// 	} catch (err) {
+	// 		console.error(`Index ${store.name}.${indexName} does not exist! Performing table scan.`);
+	// 		return (await store.getAll()).filter(item => ... ? ... )
+	// 	}
+	// }
 
 	async save<T extends PersistentModel>(
 		model: T,
@@ -425,6 +455,8 @@ class IndexedDBAdapter implements Adapter {
 		predicates: PredicatesGroup<T>
 	) {
 		const { predicates: predicateObjs, type } = predicates;
+
+		console.log('filterOnPredicate', storeName, JSON.stringify(predicateObjs));
 
 		const all = <T[]>await this.getAll(storeName);
 

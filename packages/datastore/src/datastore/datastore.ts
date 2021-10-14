@@ -880,7 +880,13 @@ class DataStore {
 			);
 		} else {
 			// WARNING: this conditional does not recognize Predicates.ALL ...
+			// console.log('DS !isQueryOne()');
 			if (!idOrCriteria || isPredicatesAll(idOrCriteria)) {
+				// console.log('DS !idOrCriteria || isPredicatesAll(idOrCriteria)');
+				// console.log(
+				// 	'isPredicatesAll(idOrCriteria)',
+				// 	isPredicatesAll(idOrCriteria)
+				// );
 				// Predicates.ALL means "all records", so no predicate (undefined)
 				result = await this.storage.query<T>(
 					modelConstructor,

@@ -65,7 +65,7 @@ describe('IndexedDBAdapter tests', () => {
 			expect(spyOnMemory).not.toHaveBeenCalled();
 		});
 
-		it('Should call getAll & inMemoryPagination for query with a predicate', async () => {
+		it.only('Should call getAll & inMemoryPagination for query with a predicate', async () => {
 			const results = await DataStore.query(Model, c =>
 				c.field1.eq('another value')
 			);
