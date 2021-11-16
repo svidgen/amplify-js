@@ -374,17 +374,40 @@ export type PersistentModelMetaData = {
 	readOnlyFields: string;
 };
 
+export interface AsyncCollection<T> extends AsyncIterable<T> {
+	toArray({ max }: { max?: number }): Promise<T[]>;
+}
+
+export type SettableFieldType<T> = T extends Promise<infer InnerPromiseType>
+	? InnerPromiseType
+	: T extends AsyncCollection<infer InnerCollectionType>
+	? InnerCollectionType[]
+	: T;
+
+export type PredicateFieldType<T> = NonNullable<
+	Scalar<
+		T extends Promise<infer InnerPromiseType>
+			? InnerPromiseType
+			: T extends AsyncCollection<infer InnerCollectionType>
+			? InnerCollectionType
+			: T
+	>
+>;
+
+type DeepWritable<T> = {
+	-readonly [P in keyof T]: T[P] extends TypeName<T[P]>
+		? T[P]
+		: DeepWritable<T[P]>;
+};
+
 export type PersistentModel = Readonly<{ id: string } & Record<string, any>>;
 export type ModelInit<
 	T,
 	K extends PersistentModelMetaData = {
 		readOnlyFields: 'createdAt' | 'updatedAt';
 	}
-> = Omit<T, 'id' | K['readOnlyFields']>;
-type DeepWritable<T> = {
-	-readonly [P in keyof T]: T[P] extends TypeName<T[P]>
-		? T[P]
-		: DeepWritable<T[P]>;
+> = {
+	[P in keyof Omit<T, 'id' | K['readOnlyFields']>]: SettableFieldType<T[P]>;
 };
 
 export type MutableModel<
@@ -394,8 +417,17 @@ export type MutableModel<
 	}
 	// This provides Intellisense with ALL of the properties, regardless of read-only
 	// but will throw a linting error if trying to overwrite a read-only property
-> = DeepWritable<Omit<T, 'id' | K['readOnlyFields']>> &
-	Readonly<Pick<T, 'id' | K['readOnlyFields']>>;
+> = {
+	[P in keyof (DeepWritable<Omit<T, 'id' | K['readOnlyFields']>> &
+		Readonly<Pick<T, 'id' | K['readOnlyFields']>>)]: SettableFieldType<T[P]>;
+	// TODO: switch to this when adding cascading saves?
+	// T[P] extends Promise<infer InnerPromiseType>
+	// 	? MutableModel<InnerPromiseType>
+	// 	: T[P] extends AsyncCollection<infer InnerCollectionType>
+	// 	? MutableModel<InnerCollectionType>[]
+	// 	: T[P]
+	// ;
+};
 
 export type ModelInstanceMetadata = {
 	id: string;
@@ -428,15 +460,14 @@ export type DataStoreSnapshot<T extends PersistentModel> = {
 
 //#region Predicates
 
-export type PredicateExpression<M extends PersistentModel, FT> = TypeName<
+export type PredicateExpression<
+	M extends PersistentModel,
 	FT
-> extends keyof MapTypeToOperands<FT>
+> = TypeName<FT> extends keyof MapTypeToOperands<FT>
 	? (
 			operator: keyof MapTypeToOperands<FT>[TypeName<FT>],
 			// make the operand type match the type they're trying to filter on
-			operand: MapTypeToOperands<FT>[TypeName<FT>][keyof MapTypeToOperands<
-				FT
-			>[TypeName<FT>]]
+			operand: MapTypeToOperands<FT>[TypeName<FT>][keyof MapTypeToOperands<FT>[TypeName<FT>]]
 	  ) => ModelPredicate<M>
 	: never;
 
@@ -504,8 +535,7 @@ export type PredicateGroups<T extends PersistentModel> = {
 
 export type ModelPredicate<M extends PersistentModel> = {
 	[K in keyof M]-?: PredicateExpression<M, NonNullable<M[K]>>;
-} &
-	PredicateGroups<M>;
+} & PredicateGroups<M>;
 
 export type ProducerModelPredicate<M extends PersistentModel> = (
 	condition: ModelPredicate<M>
@@ -590,9 +620,10 @@ export type SortPredicate<T extends PersistentModel> = {
 	[K in keyof T]-?: SortPredicateExpression<T, NonNullable<T[K]>>;
 };
 
-export type SortPredicateExpression<M extends PersistentModel, FT> = TypeName<
+export type SortPredicateExpression<
+	M extends PersistentModel,
 	FT
-> extends keyof MapTypeToOperands<FT>
+> = TypeName<FT> extends keyof MapTypeToOperands<FT>
 	? (sortDirection: keyof typeof SortDirection) => SortPredicate<M>
 	: never;
 
@@ -601,9 +632,8 @@ export enum SortDirection {
 	DESCENDING = 'DESCENDING',
 }
 
-export type SortPredicatesGroup<
-	T extends PersistentModel
-> = SortPredicateObject<T>[];
+export type SortPredicatesGroup<T extends PersistentModel> =
+	SortPredicateObject<T>[];
 
 export type SortPredicateObject<T extends PersistentModel> = {
 	field: keyof T;
