@@ -81,6 +81,77 @@ export declare class PostCustomPKComposite {
 	public readonly sort: number;
 }
 
+type LeftTableMetaData = {
+	readOnlyFields: 'createdAt' | 'updatedAt';
+};
+
+type RightTableMetaData = {
+	readOnlyFields: 'createdAt' | 'updatedAt';
+};
+
+type LeftRightMetaData = {
+	readOnlyFields: 'createdAt' | 'updatedAt';
+};
+
+export declare class LeftTable {
+	readonly id: string;
+	readonly leftName: string;
+
+	// v2.1
+	// readonly right?: (LeftRight | null)[];
+	// OR readonly right: AsyncCollection<LeftRight>;
+
+	// v2.2
+	readonly right: AsyncCollection<RightTable>;
+
+	readonly createdAt?: string;
+	readonly updatedAt?: string;
+	constructor(init: ModelInit<LeftTable, LeftTableMetaData>);
+	static copyOf(
+		source: LeftTable,
+		mutator: (
+			draft: MutableModel<LeftTable, LeftTableMetaData>
+		) => MutableModel<LeftTable, LeftTableMetaData> | void
+	): LeftTable;
+}
+
+export declare class RightTable {
+	readonly id: string;
+	readonly rightName: string;
+
+	// v2.1
+	// readonly left?: (LeftRight | null)[];
+	// OR readonly left?: AsyncCollection<LeftRight>;
+
+	// v2.2
+	readonly left: AsyncCollection<LeftTable>;
+
+	readonly createdAt?: string;
+	readonly updatedAt?: string;
+	constructor(init: ModelInit<RightTable, RightTableMetaData>);
+	static copyOf(
+		source: RightTable,
+		mutator: (
+			draft: MutableModel<RightTable, RightTableMetaData>
+		) => MutableModel<RightTable, RightTableMetaData> | void
+	): RightTable;
+}
+
+export declare class LeftRight {
+	readonly id: string;
+	readonly lefttable: LeftTable;
+	readonly righttable: RightTable;
+	readonly createdAt?: string;
+	readonly updatedAt?: string;
+	constructor(init: ModelInit<LeftRight, LeftRightMetaData>);
+	static copyOf(
+		source: LeftRight,
+		mutator: (
+			draft: MutableModel<LeftRight, LeftRightMetaData>
+		) => MutableModel<LeftRight, LeftRightMetaData> | void
+	): LeftRight;
+}
+
 export function testSchema(): Schema {
 	return {
 		enums: {},
@@ -547,6 +618,190 @@ export function testSchema(): Schema {
 						properties: {
 							fields: ['id', 'postId', 'sort'],
 						},
+					},
+				],
+			},
+			LeftTable: {
+				name: 'LeftTable',
+				fields: {
+					id: {
+						name: 'id',
+						isArray: false,
+						type: 'ID',
+						isRequired: true,
+						attributes: [],
+					},
+					leftName: {
+						name: 'leftName',
+						isArray: false,
+						type: 'String',
+						isRequired: true,
+						attributes: [],
+					},
+					right: {
+						name: 'right',
+						isArray: true,
+						type: {
+							model: 'LeftRight',
+						},
+						isRequired: false,
+						attributes: [],
+						isArrayNullable: true,
+						association: {
+							// v2.1 manyToMany
+							// connectionType: 'HAS_MANY',
+
+							// v2.2 manyToMany
+							connectionType: 'MANY_TO_MANY',
+							associatedWith: 'lefttable',
+						},
+					},
+					createdAt: {
+						name: 'createdAt',
+						isArray: false,
+						type: 'AWSDateTime',
+						isRequired: false,
+						attributes: [],
+						isReadOnly: true,
+					},
+					updatedAt: {
+						name: 'updatedAt',
+						isArray: false,
+						type: 'AWSDateTime',
+						isRequired: false,
+						attributes: [],
+						isReadOnly: true,
+					},
+				},
+				syncable: true,
+				pluralName: 'LeftTables',
+				attributes: [
+					{
+						type: 'model',
+						properties: {},
+					},
+				],
+			},
+			RightTable: {
+				name: 'RightTable',
+				fields: {
+					id: {
+						name: 'id',
+						isArray: false,
+						type: 'ID',
+						isRequired: true,
+						attributes: [],
+					},
+					rightName: {
+						name: 'rightName',
+						isArray: false,
+						type: 'String',
+						isRequired: true,
+						attributes: [],
+					},
+					left: {
+						name: 'left',
+						isArray: true,
+						type: {
+							model: 'LeftRight',
+						},
+						isRequired: false,
+						attributes: [],
+						isArrayNullable: true,
+						association: {
+							// v2.1 manyToMany
+							// connectionType: 'HAS_MANY',
+
+							// v2.2 manyToMany
+							connectionType: 'MANY_TO_MANY',
+							associatedWith: 'righttable',
+						},
+					},
+					createdAt: {
+						name: 'createdAt',
+						isArray: false,
+						type: 'AWSDateTime',
+						isRequired: false,
+						attributes: [],
+						isReadOnly: true,
+					},
+					updatedAt: {
+						name: 'updatedAt',
+						isArray: false,
+						type: 'AWSDateTime',
+						isRequired: false,
+						attributes: [],
+						isReadOnly: true,
+					},
+				},
+				syncable: true,
+				pluralName: 'RightTables',
+				attributes: [
+					{
+						type: 'model',
+						properties: {},
+					},
+				],
+			},
+			LeftRight: {
+				name: 'LeftRight',
+				fields: {
+					id: {
+						name: 'id',
+						isArray: false,
+						type: 'ID',
+						isRequired: true,
+						attributes: [],
+					},
+					lefttable: {
+						name: 'lefttable',
+						isArray: false,
+						type: {
+							model: 'LeftTable',
+						},
+						isRequired: true,
+						attributes: [],
+						association: {
+							connectionType: 'BELONGS_TO',
+							targetName: 'lefttableID',
+						},
+					},
+					righttable: {
+						name: 'righttable',
+						isArray: false,
+						type: {
+							model: 'RightTable',
+						},
+						isRequired: true,
+						attributes: [],
+						association: {
+							connectionType: 'BELONGS_TO',
+							targetName: 'righttableID',
+						},
+					},
+					createdAt: {
+						name: 'createdAt',
+						isArray: false,
+						type: 'AWSDateTime',
+						isRequired: false,
+						attributes: [],
+						isReadOnly: true,
+					},
+					updatedAt: {
+						name: 'updatedAt',
+						isArray: false,
+						type: 'AWSDateTime',
+						isRequired: false,
+						attributes: [],
+						isReadOnly: true,
+					},
+				},
+				syncable: true,
+				pluralName: 'LeftRights',
+				attributes: [
+					{
+						type: 'model',
+						properties: {},
 					},
 				],
 			},

@@ -65,7 +65,7 @@ export type ModelMeta<T extends PersistentModel> = {
 };
 export type ModelAssociation = AssociatedWith | TargetNameAssociation;
 type AssociatedWith = {
-	connectionType: 'HAS_MANY' | 'HAS_ONE';
+	connectionType: 'HAS_MANY' | 'HAS_ONE' | 'MANY_TO_MANY';
 	associatedWith: string;
 	targetName?: string;
 };
