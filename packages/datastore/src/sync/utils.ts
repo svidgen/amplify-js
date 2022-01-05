@@ -151,7 +151,7 @@ function getConnectionFields(modelDefinition: SchemaModel): string[] {
 			switch (connectionType) {
 				case 'HAS_ONE':
 				case 'HAS_MANY':
-					// case 'MANY_TO_MANY':
+				case 'MANY_TO_MANY':
 					// Intentionally blank
 					break;
 				case 'BELONGS_TO':

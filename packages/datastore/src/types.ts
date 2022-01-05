@@ -687,7 +687,7 @@ export type ControlMessageType<T> = {
 export type RelationType = {
 	fieldName: string;
 	modelName: string;
-	relationType: 'HAS_ONE' | 'HAS_MANY' | 'BELONGS_TO';
+	relationType: 'HAS_ONE' | 'HAS_MANY' | 'BELONGS_TO' | 'MANY_TO_MANY';
 	targetName?: string;
 	associatedWith?: string;
 };
