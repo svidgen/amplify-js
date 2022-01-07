@@ -81,11 +81,11 @@ export declare class PostCustomPKComposite {
 	public readonly sort: number;
 }
 
-type LeftTableMetaData = {
+type LeftItemMetaData = {
 	readOnlyFields: 'createdAt' | 'updatedAt';
 };
 
-type RightTableMetaData = {
+type RightItemMetaData = {
 	readOnlyFields: 'createdAt' | 'updatedAt';
 };
 
@@ -93,7 +93,7 @@ type LeftRightMetaData = {
 	readOnlyFields: 'createdAt' | 'updatedAt';
 };
 
-export declare class LeftTable {
+export declare class LeftItem {
 	readonly id: string;
 	readonly leftName: string;
 
@@ -102,20 +102,20 @@ export declare class LeftTable {
 	// OR readonly right: AsyncCollection<LeftRight>;
 
 	// v2.2
-	readonly right: AsyncCollection<RightTable>;
+	readonly right: AsyncCollection<RightItem>;
 
 	readonly createdAt?: string;
 	readonly updatedAt?: string;
-	constructor(init: ModelInit<LeftTable, LeftTableMetaData>);
+	constructor(init: ModelInit<LeftItem, LeftItemMetaData>);
 	static copyOf(
-		source: LeftTable,
+		source: LeftItem,
 		mutator: (
-			draft: MutableModel<LeftTable, LeftTableMetaData>
-		) => MutableModel<LeftTable, LeftTableMetaData> | void
-	): LeftTable;
+			draft: MutableModel<LeftItem, LeftItemMetaData>
+		) => MutableModel<LeftItem, LeftItemMetaData> | void
+	): LeftItem;
 }
 
-export declare class RightTable {
+export declare class RightItem {
 	readonly id: string;
 	readonly rightName: string;
 
@@ -124,23 +124,23 @@ export declare class RightTable {
 	// OR readonly left?: AsyncCollection<LeftRight>;
 
 	// v2.2
-	readonly left: AsyncCollection<LeftTable>;
+	readonly left: AsyncCollection<LeftItem>;
 
 	readonly createdAt?: string;
 	readonly updatedAt?: string;
-	constructor(init: ModelInit<RightTable, RightTableMetaData>);
+	constructor(init: ModelInit<RightItem, RightItemMetaData>);
 	static copyOf(
-		source: RightTable,
+		source: RightItem,
 		mutator: (
-			draft: MutableModel<RightTable, RightTableMetaData>
-		) => MutableModel<RightTable, RightTableMetaData> | void
-	): RightTable;
+			draft: MutableModel<RightItem, RightItemMetaData>
+		) => MutableModel<RightItem, RightItemMetaData> | void
+	): RightItem;
 }
 
 export declare class LeftRight {
 	readonly id: string;
-	readonly lefttable: LeftTable;
-	readonly righttable: RightTable;
+	readonly LeftItem: LeftItem;
+	readonly RightItem: RightItem;
 	readonly createdAt?: string;
 	readonly updatedAt?: string;
 	constructor(init: ModelInit<LeftRight, LeftRightMetaData>);
@@ -621,8 +621,8 @@ export function testSchema(): Schema {
 					},
 				],
 			},
-			LeftTable: {
-				name: 'LeftTable',
+			LeftItem: {
+				name: 'LeftItem',
 				fields: {
 					id: {
 						name: 'id',
@@ -653,7 +653,10 @@ export function testSchema(): Schema {
 
 							// v2.2 manyToMany
 							connectionType: 'MANY_TO_MANY',
-							associatedWith: 'lefttable',
+							associatedWith: 'LeftItem',
+
+							// the field on the join table that points to the *other* model.
+							connectedTo: 'RightItem',
 						},
 					},
 					createdAt: {
@@ -674,7 +677,7 @@ export function testSchema(): Schema {
 					},
 				},
 				syncable: true,
-				pluralName: 'LeftTables',
+				pluralName: 'LeftItems',
 				attributes: [
 					{
 						type: 'model',
@@ -682,8 +685,8 @@ export function testSchema(): Schema {
 					},
 				],
 			},
-			RightTable: {
-				name: 'RightTable',
+			RightItem: {
+				name: 'RightItem',
 				fields: {
 					id: {
 						name: 'id',
@@ -714,7 +717,10 @@ export function testSchema(): Schema {
 
 							// v2.2 manyToMany
 							connectionType: 'MANY_TO_MANY',
-							associatedWith: 'righttable',
+							associatedWith: 'RightItem',
+
+							// the field on the join table that points to the *other* model.
+							connectedTo: 'LeftItem',
 						},
 					},
 					createdAt: {
@@ -735,7 +741,7 @@ export function testSchema(): Schema {
 					},
 				},
 				syncable: true,
-				pluralName: 'RightTables',
+				pluralName: 'RightItems',
 				attributes: [
 					{
 						type: 'model',
@@ -753,30 +759,30 @@ export function testSchema(): Schema {
 						isRequired: true,
 						attributes: [],
 					},
-					lefttable: {
-						name: 'lefttable',
+					LeftItem: {
+						name: 'LeftItem',
 						isArray: false,
 						type: {
-							model: 'LeftTable',
+							model: 'LeftItem',
 						},
 						isRequired: true,
 						attributes: [],
 						association: {
 							connectionType: 'BELONGS_TO',
-							targetName: 'lefttableID',
+							targetName: 'LeftItemID',
 						},
 					},
-					righttable: {
-						name: 'righttable',
+					RightItem: {
+						name: 'RightItem',
 						isArray: false,
 						type: {
-							model: 'RightTable',
+							model: 'RightItem',
 						},
 						isRequired: true,
 						attributes: [],
 						association: {
 							connectionType: 'BELONGS_TO',
-							targetName: 'righttableID',
+							targetName: 'RightItemID',
 						},
 					},
 					createdAt: {

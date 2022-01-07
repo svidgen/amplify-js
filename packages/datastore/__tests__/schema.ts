@@ -654,6 +654,196 @@ export const newSchema: Schema = {
 				},
 			},
 		},
+		LeftItem: {
+			name: 'LeftItem',
+			fields: {
+				id: {
+					name: 'id',
+					isArray: false,
+					type: 'ID',
+					isRequired: true,
+					attributes: [],
+				},
+				leftName: {
+					name: 'leftName',
+					isArray: false,
+					type: 'String',
+					isRequired: true,
+					attributes: [],
+				},
+				right: {
+					name: 'right',
+					isArray: true,
+					type: {
+						model: 'LeftRight',
+					},
+					isRequired: false,
+					attributes: [],
+					isArrayNullable: true,
+					association: {
+						// v2.1 manyToMany
+						// connectionType: 'HAS_MANY',
+
+						// v2.2 manyToMany
+						connectionType: 'MANY_TO_MANY',
+						associatedWith: 'LeftItem',
+
+						// the field on the join table that points to the *other* model.
+						connectedTo: 'RightItem',
+					},
+				},
+				createdAt: {
+					name: 'createdAt',
+					isArray: false,
+					type: 'AWSDateTime',
+					isRequired: false,
+					attributes: [],
+					isReadOnly: true,
+				},
+				updatedAt: {
+					name: 'updatedAt',
+					isArray: false,
+					type: 'AWSDateTime',
+					isRequired: false,
+					attributes: [],
+					isReadOnly: true,
+				},
+			},
+			syncable: true,
+			pluralName: 'LeftItems',
+			attributes: [
+				{
+					type: 'model',
+					properties: {},
+				},
+			],
+		},
+		RightItem: {
+			name: 'RightItem',
+			fields: {
+				id: {
+					name: 'id',
+					isArray: false,
+					type: 'ID',
+					isRequired: true,
+					attributes: [],
+				},
+				rightName: {
+					name: 'rightName',
+					isArray: false,
+					type: 'String',
+					isRequired: true,
+					attributes: [],
+				},
+				left: {
+					name: 'left',
+					isArray: true,
+					type: {
+						model: 'LeftRight',
+					},
+					isRequired: false,
+					attributes: [],
+					isArrayNullable: true,
+					association: {
+						// v2.1 manyToMany
+						// connectionType: 'HAS_MANY',
+
+						// v2.2 manyToMany
+						connectionType: 'MANY_TO_MANY',
+						associatedWith: 'RightItem',
+
+						// the field on the join table that points to the *other* model.
+						connectedTo: 'LeftItem',
+					},
+				},
+				createdAt: {
+					name: 'createdAt',
+					isArray: false,
+					type: 'AWSDateTime',
+					isRequired: false,
+					attributes: [],
+					isReadOnly: true,
+				},
+				updatedAt: {
+					name: 'updatedAt',
+					isArray: false,
+					type: 'AWSDateTime',
+					isRequired: false,
+					attributes: [],
+					isReadOnly: true,
+				},
+			},
+			syncable: true,
+			pluralName: 'RightItems',
+			attributes: [
+				{
+					type: 'model',
+					properties: {},
+				},
+			],
+		},
+		LeftRight: {
+			name: 'LeftRight',
+			fields: {
+				id: {
+					name: 'id',
+					isArray: false,
+					type: 'ID',
+					isRequired: true,
+					attributes: [],
+				},
+				LeftItem: {
+					name: 'LeftItem',
+					isArray: false,
+					type: {
+						model: 'LeftItem',
+					},
+					isRequired: true,
+					attributes: [],
+					association: {
+						connectionType: 'BELONGS_TO',
+						targetName: 'LeftItemID',
+					},
+				},
+				RightItem: {
+					name: 'RightItem',
+					isArray: false,
+					type: {
+						model: 'RightItem',
+					},
+					isRequired: true,
+					attributes: [],
+					association: {
+						connectionType: 'BELONGS_TO',
+						targetName: 'RightItemID',
+					},
+				},
+				createdAt: {
+					name: 'createdAt',
+					isArray: false,
+					type: 'AWSDateTime',
+					isRequired: false,
+					attributes: [],
+					isReadOnly: true,
+				},
+				updatedAt: {
+					name: 'updatedAt',
+					isArray: false,
+					type: 'AWSDateTime',
+					isRequired: false,
+					attributes: [],
+					isReadOnly: true,
+				},
+			},
+			syncable: true,
+			pluralName: 'LeftRights',
+			attributes: [
+				{
+					type: 'model',
+					properties: {},
+				},
+			],
+		},
 	},
 	enums: {},
 	nonModels: {

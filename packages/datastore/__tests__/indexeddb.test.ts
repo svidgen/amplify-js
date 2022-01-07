@@ -72,10 +72,13 @@ describe('Indexed db storage test', () => {
 			`${USER}_Editor`,
 			`${USER}_Forum`,
 			`${USER}_ForumEditorJoin`,
+			`${USER}_LeftItem`,
+			`${USER}_LeftRight`,
 			`${USER}_Person`,
 			`${USER}_Post`,
 			`${USER}_PostAuthorJoin`,
 			`${USER}_Project`,
+			`${USER}_RightItem`,
 			`${USER}_Song`,
 			`${USER}_Team`,
 		];

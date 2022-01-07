@@ -13,7 +13,16 @@ import {
 	PersistentModel,
 	PersistentModelConstructor,
 } from '../src/types';
-import { Comment, Model, Post, Metadata, testSchema } from './helpers';
+import {
+	Comment,
+	Model,
+	Post,
+	Metadata,
+	LeftItem,
+	RightItem,
+	LeftRight,
+	testSchema,
+} from './helpers';
 import { UpdatingHookContext } from 'dexie';
 
 let initSchema: typeof initSchemaType;

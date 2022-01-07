@@ -198,6 +198,77 @@ declare class AlbumModel {
 	): AlbumModel;
 }
 
+type LeftItemMetaData = {
+	readOnlyFields: 'createdAt' | 'updatedAt';
+};
+
+type RightItemMetaData = {
+	readOnlyFields: 'createdAt' | 'updatedAt';
+};
+
+type LeftRightMetaData = {
+	readOnlyFields: 'createdAt' | 'updatedAt';
+};
+
+declare class LeftItemModel {
+	readonly id: string;
+	readonly leftName: string;
+
+	// v2.1
+	// readonly right?: (LeftRight | null)[];
+	// OR readonly right: AsyncCollection<LeftRight>;
+
+	// v2.2
+	readonly right: AsyncCollection<RightItemModel>;
+
+	readonly createdAt?: string;
+	readonly updatedAt?: string;
+	constructor(init: ModelInit<LeftItemModel, LeftItemMetaData>);
+	static copyOf(
+		source: LeftItemModel,
+		mutator: (
+			draft: MutableModel<LeftItemModel, LeftItemMetaData>
+		) => MutableModel<LeftItemModel, LeftItemMetaData> | void
+	): LeftItemModel;
+}
+
+declare class RightItemModel {
+	readonly id: string;
+	readonly rightName: string;
+
+	// v2.1
+	// readonly left?: (LeftRight | null)[];
+	// OR readonly left?: AsyncCollection<LeftRight>;
+
+	// v2.2
+	readonly left: AsyncCollection<LeftItemModel>;
+
+	readonly createdAt?: string;
+	readonly updatedAt?: string;
+	constructor(init: ModelInit<RightItemModel, RightItemMetaData>);
+	static copyOf(
+		source: RightItemModel,
+		mutator: (
+			draft: MutableModel<RightItemModel, RightItemMetaData>
+		) => MutableModel<RightItemModel, RightItemMetaData> | void
+	): RightItemModel;
+}
+
+declare class LeftRightModel {
+	readonly id: string;
+	readonly LeftItem: LeftItemModel;
+	readonly RightItem: RightItemModel;
+	readonly createdAt?: string;
+	readonly updatedAt?: string;
+	constructor(init: ModelInit<LeftRightModel, LeftRightMetaData>);
+	static copyOf(
+		source: LeftRightModel,
+		mutator: (
+			draft: MutableModel<LeftRightModel, LeftRightMetaData>
+		) => MutableModel<LeftRightModel, LeftRightMetaData> | void
+	): LeftRightModel;
+}
+
 const {
 	Author,
 	Album,
@@ -215,6 +286,9 @@ const {
 	Nested,
 	Project,
 	Team,
+	LeftItem,
+	RightItem,
+	LeftRight,
 } = initSchema(newSchema) as {
 	Author: PersistentModelConstructor<AuthorModel>;
 	Album: PersistentModelConstructor<AlbumModel>;
@@ -232,6 +306,9 @@ const {
 	Nested: NonModelTypeConstructor<NestedType>;
 	Project: PersistentModelConstructor<ProjectModel>;
 	Team: PersistentModelConstructor<TeamModel>;
+	LeftItem: PersistentModelConstructor<LeftItemModel>;
+	RightItem: PersistentModelConstructor<RightItemModel>;
+	LeftRight: PersistentModelConstructor<LeftRightModel>;
 };
 ``;
 
@@ -252,5 +329,8 @@ export {
 	Nested,
 	Project,
 	Team,
+	LeftItem,
+	RightItem,
+	LeftRight,
 	newSchema as schema,
 };

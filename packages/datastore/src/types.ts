@@ -68,6 +68,7 @@ type AssociatedWith = {
 	connectionType: 'HAS_MANY' | 'HAS_ONE' | 'MANY_TO_MANY';
 	associatedWith: string;
 	targetName?: string;
+	connectedTo?: string;
 };
 export function isAssociatedWith(obj: any): obj is AssociatedWith {
 	return obj && obj.associatedWith;

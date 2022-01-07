@@ -10,6 +10,7 @@ import {
 import { ModelPredicateCreator as FlatModelPredicateCreator } from './index';
 import { ExclusiveStorage as StorageAdapter } from '../storage/storage';
 import { asyncSome, asyncEvery, asyncFilter } from '../util';
+import { Model } from '../../__tests__/helpers';
 
 type MatchableTypes =
 	| string
@@ -796,6 +797,73 @@ export function predicateFor<T extends PersistentModel>(
 						(oldtail as GroupCondition).operands.push(newtail);
 						const newlink = predicateFor(
 							relatedMeta,
+							undefined,
+							newquery,
+							newtail
+						);
+						return newlink;
+					} else if (def.association.connectionType === 'MANY_TO_MANY') {
+						// MANY_TO_MANY is [HAS_MANY] <- [BELONGS_TO : BELONGS_TO] -> [HAS_MANY]
+						// To "hide" this from customers on straightforward M:M models, we needs to append
+						// two links + conditions to the chain.
+						//
+						//   1. self -> join table : HAS_ONE
+						//   2. join table -> other : BELONGS_TO
+						//
+						// Note that the metadata on self (`ModelType`) should have a `connectedTo` field to
+						// indicate which field on JoinTable refers to the `other` table.
+
+						if (!def.association.connectedTo) {
+							throw new Error(
+								`Missing \`connectedTo\` field metadata on ${def.association}. Regenerate datastore models.`
+							);
+						}
+
+						const joinTableMeta = (def.type as ModelFieldType).modelConstructor;
+						if (!joinTableMeta || !joinTableMeta.schema.fields) {
+							throw new Error(
+								`Missing join table schema fields on ${def.association}. Regenerate datastore models.`
+							);
+						}
+						const relatedModelJoinField =
+							joinTableMeta?.schema.fields[def.association.connectedTo];
+						const relatedModelMeta = (
+							relatedModelJoinField.type as ModelFieldType
+						).modelConstructor;
+						if (!relatedModelMeta) {
+							throw new Error(
+								`Missing related model meatadata on ${def.association}. Regenerate datastore models.`
+							);
+						}
+
+						// self -> join table
+
+						const [newquery, oldtail] = link.__query.copy(link.__tail);
+						const joinTableLink = new GroupCondition(
+							joinTableMeta,
+							fieldName,
+							'HAS_MANY',
+							'and',
+							[]
+						);
+
+						// in attaching `joinTableLink` to the tail, `joinTableLink` temporarily
+						// becomes the new tail / buildout point.
+						(oldtail as GroupCondition).operands.push(joinTableLink);
+
+						// join table -> other
+
+						const newtail = new GroupCondition(
+							relatedModelMeta,
+							relatedModelJoinField.name,
+							'BELONGS_TO',
+							'and',
+							[]
+						);
+						joinTableLink.operands.push(newtail);
+
+						const newlink = predicateFor(
+							relatedModelMeta,
 							undefined,
 							newquery,
 							newtail

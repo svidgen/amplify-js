@@ -13,8 +13,20 @@ import {
 	Predicates as V1Predicates,
 } from '../src/predicates';
 import { validatePredicate as flatPredicateMatches } from '../src/util';
-import { schema, Author, Post, Blog, BlogOwner } from './model';
+import {
+	schema,
+	Author,
+	Post,
+	Blog,
+	BlogOwner,
+	LeftItem,
+	LeftRight,
+	RightItem,
+} from './model';
 import { AsyncCollection } from '../src';
+
+// these Metadata objects are normally assembled by the DataStore instance
+// and passed to the predicate layer.
 
 const AuthorMeta = {
 	builder: Author,
@@ -31,6 +43,24 @@ const BlogMeta = {
 const PostMeta = {
 	builder: Post,
 	schema: schema.models['Post'],
+	pkField: ['id'],
+};
+
+const LeftMeta = {
+	builder: LeftItem,
+	schema: schema.models['LeftItem'],
+	pkField: ['id'],
+};
+
+const RightMeta = {
+	builder: RightItem,
+	schema: schema.models['RightItem'],
+	pkField: ['id'],
+};
+
+const LeftRightMeta = {
+	builder: LeftRight,
+	schema: schema.models['LeftRight'],
 	pkField: ['id'],
 };
 
@@ -74,6 +104,25 @@ function getStorageFake(collections) {
 			}
 		},
 	};
+}
+
+function logQuery(query) {
+	console.log(
+		'query',
+		JSON.stringify(
+			query.__query,
+			[
+				'model',
+				'schema',
+				'name',
+				'operator',
+				'operands',
+				'relationshipType',
+				'field',
+			],
+			2
+		)
+	);
 }
 
 describe('Predicates', () => {
@@ -930,6 +979,90 @@ describe('Predicates', () => {
 						'Debbie Donut post 3 ROOT',
 						'Debbie Donut post 4 ROOT',
 					]);
+				});
+			});
+		});
+	});
+
+	describe('on many to many relations', () => {
+		const leftItems = [1, 2, 3, 4, 5].map((id) => {
+			return {
+				id: String(id),
+				leftName: `LeftItem name ${id}`,
+				right: new AsyncCollection([]),
+			} as ModelOf<typeof LeftItem>;
+		});
+
+		const rightItems = [1, 2, 3, 4, 5].map((id) => {
+			return {
+				id: String(id),
+				rightName: `RightItem name ${id}`,
+				left: new AsyncCollection([]),
+			} as ModelOf<typeof RightItem>;
+		});
+
+		// let's join items together where left.id < right.id (numerically).
+		// this should give us clear conditions to test on and provide us with a few
+		// isolated items to test empty sets on each side.
+		const leftRightItems = [] as ModelOf<typeof LeftRight>[];
+
+		for (const left of leftItems) {
+			for (const right of rightItems) {
+				if (Number(left.id) < Number(right.id)) {
+					// establish connections for the filter() scenario
+					(left.right.values as any).push(right);
+					(right.left.values as any).push(left);
+
+					// establish connection for the query()/fetch() scenario
+					leftRightItems.push({
+						id: `${left.id}.${right.id}`,
+						LeftItemId: left.id,
+						LeftItem: Promise.resolve(left),
+						RightItemId: right.id,
+						RightItem: Promise.resolve(right),
+					} as unknown as ModelOf<typeof LeftRight>);
+				}
+			}
+		}
+
+		[
+			{
+				name: 'filters',
+				execute: async <T>(query: any) => query.filter(leftItems) as T[],
+			},
+			{
+				name: 'storage predicates',
+				execute: async <T>(query: any) =>
+					(await query.__query.fetch(
+						getStorageFake({
+							[LeftItem.name]: leftItems,
+							[RightItem.name]: rightItems,
+							[LeftRight.name]: leftRightItems,
+						})
+					)) as T[],
+			},
+		].forEach((mechanism) => {
+			describe('as ' + mechanism.name, () => {
+				test.only('sanity check on M:M join table', async () => {
+					const query = predicateFor(LeftRightMeta).and((lr) => [
+						lr.LeftItem.leftName.gt('1'),
+						lr.RightItem.rightName.lt('5'),
+					]);
+					logQuery(query);
+					const results = await mechanism.execute(query);
+					console.log(results);
+					expect(true).toBe(false);
+				});
+
+				test('can filter on M:M child item property', async () => {
+					const query =
+						predicateFor(LeftMeta).right.rightName.eq('RightItem name 3');
+					logQuery(query);
+
+					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
+
+					console.log(matches);
+					expect(true).toBe(false);
 				});
 			});
 		});
