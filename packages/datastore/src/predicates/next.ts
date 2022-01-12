@@ -337,6 +337,46 @@ export class GroupCondition {
 		return [copied, extractedCopy];
 	}
 
+	expandedFrom(group: GroupCondition) {
+		const def = group.model.schema.fields[this.field!];
+		// console.log('def', this.model, this.model.schema, def);
+		if (def.association?.connectionType === 'MANY_TO_MANY') {
+			if (!def.association.connectedTo) {
+				throw new Error(
+					`Missing \`connectedTo\` field metadata on ${def.association}. Regenerate datastore models.`
+				);
+			}
+
+			const joinTableMeta = (def.type as ModelFieldType).modelConstructor;
+			if (!joinTableMeta || !joinTableMeta.schema.fields) {
+				throw new Error(
+					`Missing join table schema fields on ${def.association}. Regenerate datastore models.`
+				);
+			}
+			const relatedModelJoinField =
+				joinTableMeta?.schema.fields[def.association.connectedTo];
+			const relatedModelMeta = (relatedModelJoinField.type as ModelFieldType)
+				.modelConstructor;
+			if (!relatedModelMeta) {
+				throw new Error(
+					`Missing related model meatadata on ${def.association}. Regenerate datastore models.`
+				);
+			}
+
+			return new GroupCondition(joinTableMeta, this.field, 'HAS_MANY', 'and', [
+				new GroupCondition(
+					relatedModelMeta,
+					relatedModelJoinField.name,
+					'BELONGS_TO',
+					'and',
+					this.operands
+				),
+			]);
+		} else {
+			return this;
+		}
+	}
+
 	/**
 	 * Fetches matching records from a given storage adapter using legacy predicates (for now).
 	 * @param storage The storage adapter this predicate will query against.
@@ -367,14 +407,35 @@ export class GroupCondition {
 			(op) => op instanceof FieldCondition
 		) as FieldCondition[];
 
+		function prettyQuery(query) {
+			return JSON.stringify(
+				query,
+				[
+					'model',
+					'schema',
+					'name',
+					'operator',
+					'operands',
+					'relationshipType',
+					'field',
+				],
+				2
+			);
+		}
+
 		// TODO: fetch Predicate.ALL return early here?
 		// TODO: parallize. (some storage engines may optimize parallel requests)
 		for (const g of groups) {
-			const relatives = await g.fetch(
+			const _g = g.expandedFrom(this);
+
+			const relatives = await _g.fetch(
 				storage,
 				[...breadcrumb, this.groupId],
 				negateChildren
 			);
+
+			// console.log('_g', prettyQuery(_g));
+			// console.log('relatives', g.field, relatives);
 
 			// no relatives -> no need to attempt to perform a "join" query for
 			// candidate results:
@@ -424,15 +485,24 @@ export class GroupCondition {
 						rightHandField = 'id';
 					}
 
+					// console.log(
+					// 	`attempting to join ${leftHandField} - ${rightHandField}`,
+					// 	relatives
+					// );
+
 					const joinConditions: FieldCondition[] = [];
 					for (const relative of relatives) {
 						// await right-hand value, b/c it will eventually be lazy-loaded in some cases.
 						const rightHandValue =
 							(await relative[rightHandField]).id || relative[rightHandField];
+
+						// console.log('right hand value', rightHandValue);
 						joinConditions.push(
 							new FieldCondition(leftHandField, 'eq', [rightHandValue])
 						);
 					}
+
+					// console.log('join conditions', joinConditions);
 
 					const predicate = FlatModelPredicateCreator.createFromExisting(
 						this.model.schema,
@@ -446,9 +516,23 @@ export class GroupCondition {
 							)
 					);
 
+					// console.log(
+					// 	'inner predicate',
+					// 	this.model.builder,
+					// 	JSON.stringify(
+					// 		FlatModelPredicateCreator.predicateGroupsMap.get(
+					// 			predicate as any
+					// 		),
+					// 		null,
+					// 		2
+					// 	)
+					// );
+
 					resultGroups.push(
 						await storage.query(this.model.builder, predicate as any)
 					);
+
+					// console.log('resultGroups', resultGroups);
 				} else {
 					throw new Error('Missing field metadata.');
 				}
@@ -547,7 +631,8 @@ export class GroupCondition {
 		}
 
 		if (
-			this.relationshipType === 'HAS_MANY' &&
+			(this.relationshipType === 'HAS_MANY' ||
+				this.relationshipType === 'MANY_TO_MANY') &&
 			typeof itemToCheck[Symbol.asyncIterator] === 'function'
 		) {
 			for await (const singleItem of itemToCheck) {
@@ -836,38 +921,63 @@ export function predicateFor<T extends PersistentModel>(
 							);
 						}
 
-						// self -> join table
+						// OPTION 1 ... not sure this one will work.
+						// // self -> join table
+						// const [newquery, oldtail] = link.__query.copy(link.__tail);
+						// const joinTableLink = new GroupCondition(
+						// 	joinTableMeta,
+						// 	fieldName,
+						// 	'HAS_MANY',
+						// 	'and',
+						// 	[]
+						// );
 
+						// // in attaching `joinTableLink` to the tail, `joinTableLink` temporarily
+						// // becomes the new tail / buildout point.
+						// (oldtail as GroupCondition).operands.push(joinTableLink);
+
+						// // join table -> other
+
+						// const newtail = new GroupCondition(
+						// 	relatedModelMeta,
+						// 	relatedModelJoinField.name,
+						// 	'BELONGS_TO',
+						// 	'and',
+						// 	[]
+						// );
+						// joinTableLink.operands.push(newtail);
+
+						// const newlink = predicateFor(
+						// 	relatedModelMeta,
+						// 	undefined,
+						// 	newquery,
+						// 	newtail
+						// );
+
+						// OPTION 2. this is probably what we need. and we then need to expand
+						// the M:M relationship at evaluation time.
+
+						// to head off mutability concerns.
 						const [newquery, oldtail] = link.__query.copy(link.__tail);
-						const joinTableLink = new GroupCondition(
-							joinTableMeta,
-							fieldName,
-							'HAS_MANY',
-							'and',
-							[]
-						);
-
-						// in attaching `joinTableLink` to the tail, `joinTableLink` temporarily
-						// becomes the new tail / buildout point.
-						(oldtail as GroupCondition).operands.push(joinTableLink);
-
-						// join table -> other
-
 						const newtail = new GroupCondition(
 							relatedModelMeta,
-							relatedModelJoinField.name,
-							'BELONGS_TO',
+							fieldName,
+							def.association.connectionType,
 							'and',
 							[]
 						);
-						joinTableLink.operands.push(newtail);
 
+						// `oldtail` here refers to the *copy* of the old tail.
+						// so, it's safe to modify at this point. and we need to modify
+						// it to push the *new* tail onto the end of it.
+						(oldtail as GroupCondition).operands.push(newtail);
 						const newlink = predicateFor(
 							relatedModelMeta,
 							undefined,
 							newquery,
 							newtail
 						);
+
 						return newlink;
 					} else {
 						throw new Error(

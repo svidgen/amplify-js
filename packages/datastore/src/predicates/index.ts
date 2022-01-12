@@ -33,7 +33,7 @@ export class Predicates {
 }
 
 export class ModelPredicateCreator {
-	private static predicateGroupsMap = new WeakMap<
+	public static predicateGroupsMap = new WeakMap<
 		ModelPredicate<any>,
 		PredicatesGroup<any>
 	>();

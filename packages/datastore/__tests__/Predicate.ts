@@ -1016,14 +1016,28 @@ describe('Predicates', () => {
 					// establish connection for the query()/fetch() scenario
 					leftRightItems.push({
 						id: `${left.id}.${right.id}`,
-						LeftItemId: left.id,
+						LeftItemID: left.id,
 						LeftItem: Promise.resolve(left),
-						RightItemId: right.id,
+						RightItemID: right.id,
 						RightItem: Promise.resolve(right),
 					} as unknown as ModelOf<typeof LeftRight>);
 				}
 			}
 		}
+
+		test.only('the test data can correctly be joined from the join table outwards [sanity check]', async () => {
+			const mechanism = {
+				name: 'filters',
+				execute: async <T>(query: any) => query.filter(leftRightItems) as T[],
+			};
+
+			const query = predicateFor(LeftRightMeta).and((lr) => [
+				lr.LeftItem.leftName.gt('LeftItem name 1'),
+				lr.RightItem.rightName.le('RightItem name 4'),
+			]);
+			const results = await mechanism.execute<ModelOf<typeof LeftRight>>(query);
+			expect(results.map((o) => o.id)).toEqual(['2.3', '2.4', '3.4']);
+		});
 
 		[
 			{
@@ -1043,18 +1057,7 @@ describe('Predicates', () => {
 			},
 		].forEach((mechanism) => {
 			describe('as ' + mechanism.name, () => {
-				test.only('sanity check on M:M join table', async () => {
-					const query = predicateFor(LeftRightMeta).and((lr) => [
-						lr.LeftItem.leftName.gt('1'),
-						lr.RightItem.rightName.lt('5'),
-					]);
-					logQuery(query);
-					const results = await mechanism.execute(query);
-					console.log(results);
-					expect(true).toBe(false);
-				});
-
-				test('can filter on M:M child item property', async () => {
+				test.only('can filter on M:M child item property', async () => {
 					const query =
 						predicateFor(LeftMeta).right.rightName.eq('RightItem name 3');
 					logQuery(query);
@@ -1062,7 +1065,7 @@ describe('Predicates', () => {
 					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
 
 					console.log(matches);
-					expect(true).toBe(false);
+					expect(matches.map((li) => li.id)).toEqual(['1', '2']);
 				});
 			});
 		});
