@@ -1025,7 +1025,7 @@ describe('Predicates', () => {
 			}
 		}
 
-		test.only('the test data can correctly be joined from the join table outwards [sanity check]', async () => {
+		test('the test data can correctly be joined from the join table outwards [sanity check]', async () => {
 			const mechanism = {
 				name: 'filters',
 				execute: async <T>(query: any) => query.filter(leftRightItems) as T[],
@@ -1057,15 +1057,55 @@ describe('Predicates', () => {
 			},
 		].forEach((mechanism) => {
 			describe('as ' + mechanism.name, () => {
-				test.only('can filter on M:M child item property', async () => {
+				test('can filter on M:M child item property with eq()', async () => {
 					const query =
 						predicateFor(LeftMeta).right.rightName.eq('RightItem name 3');
-					logQuery(query);
-
 					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
-
-					console.log(matches);
 					expect(matches.map((li) => li.id)).toEqual(['1', '2']);
+				});
+
+				test('can filter on M:M child item property with ne()', async () => {
+					const query =
+						predicateFor(LeftMeta).right.rightName.ne('RightItem name 5');
+					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
+					expect(matches.map((li) => li.id)).toEqual(['1', '2', '3']);
+				});
+
+				test('can filter on M:M child item property with lt()', async () => {
+					const query =
+						predicateFor(LeftMeta).right.rightName.lt('RightItem name 3');
+					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
+					expect(matches.map((li) => li.id)).toEqual(['1']);
+				});
+
+				test('can filter on M:M child item property with le()', async () => {
+					const query =
+						predicateFor(LeftMeta).right.rightName.le('RightItem name 3');
+					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
+					expect(matches.map((li) => li.id)).toEqual(['1', '2']);
+				});
+
+				test('can filter on M:M child item property with beginsWith()', async () => {
+					const query =
+						predicateFor(LeftMeta).right.rightName.beginsWith('RightItem name');
+					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
+					expect(matches.map((li) => li.id)).toEqual(['1', '2', '3', '4']);
+				});
+
+				test('can filter on M:M child item property with beginsWith() non-match', async () => {
+					const query =
+						predicateFor(LeftMeta).right.rightName.beginsWith('NO MATCH');
+					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
+					expect(matches.map((li) => li.id)).toEqual([]);
+				});
+
+				test('can filter on M:M on both sides', async () => {
+					const query = predicateFor(LeftMeta).and((l) => [
+						l.leftName.ge('LeftItem name 2'),
+						l.right.rightName.le('RightItem name 4'),
+					]);
+					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
+					expect(matches.map((li) => li.id)).toEqual(['2', '3']);
 				});
 			});
 		});

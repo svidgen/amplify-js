@@ -337,10 +337,10 @@ export class GroupCondition {
 		return [copied, extractedCopy];
 	}
 
-	expandedFrom(group: GroupCondition) {
-		const def = group.model.schema.fields[this.field!];
+	expandedFrom(parent: GroupCondition) {
+		const def = parent.model.schema.fields[this.field!];
 		// console.log('def', this.model, this.model.schema, def);
-		if (def.association?.connectionType === 'MANY_TO_MANY') {
+		if (def?.association?.connectionType === 'MANY_TO_MANY') {
 			if (!def.association.connectedTo) {
 				throw new Error(
 					`Missing \`connectedTo\` field metadata on ${def.association}. Regenerate datastore models.`
