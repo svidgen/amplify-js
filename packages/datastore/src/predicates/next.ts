@@ -339,7 +339,6 @@ export class GroupCondition {
 
 	expandedFrom(parent: GroupCondition) {
 		const def = parent.model.schema.fields[this.field!];
-		// console.log('def', this.model, this.model.schema, def);
 		if (def?.association?.connectionType === 'MANY_TO_MANY') {
 			if (!def.association.connectedTo) {
 				throw new Error(
@@ -434,9 +433,6 @@ export class GroupCondition {
 				negateChildren
 			);
 
-			// console.log('_g', prettyQuery(_g));
-			// console.log('relatives', g.field, relatives);
-
 			// no relatives -> no need to attempt to perform a "join" query for
 			// candidate results:
 			//
@@ -485,24 +481,16 @@ export class GroupCondition {
 						rightHandField = 'id';
 					}
 
-					// console.log(
-					// 	`attempting to join ${leftHandField} - ${rightHandField}`,
-					// 	relatives
-					// );
-
 					const joinConditions: FieldCondition[] = [];
 					for (const relative of relatives) {
 						// await right-hand value, b/c it will eventually be lazy-loaded in some cases.
 						const rightHandValue =
 							(await relative[rightHandField]).id || relative[rightHandField];
 
-						// console.log('right hand value', rightHandValue);
 						joinConditions.push(
 							new FieldCondition(leftHandField, 'eq', [rightHandValue])
 						);
 					}
-
-					// console.log('join conditions', joinConditions);
 
 					const predicate = FlatModelPredicateCreator.createFromExisting(
 						this.model.schema,
@@ -516,23 +504,9 @@ export class GroupCondition {
 							)
 					);
 
-					// console.log(
-					// 	'inner predicate',
-					// 	this.model.builder,
-					// 	JSON.stringify(
-					// 		FlatModelPredicateCreator.predicateGroupsMap.get(
-					// 			predicate as any
-					// 		),
-					// 		null,
-					// 		2
-					// 	)
-					// );
-
 					resultGroups.push(
 						await storage.query(this.model.builder, predicate as any)
 					);
-
-					// console.log('resultGroups', resultGroups);
 				} else {
 					throw new Error('Missing field metadata.');
 				}
