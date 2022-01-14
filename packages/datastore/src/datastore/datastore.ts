@@ -629,6 +629,40 @@ const createModelClass = <T extends PersistentModel>(
 						const asyncResult = new AsyncCollection(resultPromise);
 						instanceMemos[field] = asyncResult;
 						return asyncResult;
+					} else if (association.connectionType === 'MANY_TO_MANY') {
+						if (instanceMemos.hasOwnProperty(field)) {
+							return instanceMemos[field];
+						}
+						const associatedWith = association.associatedWith;
+						const connectedTo = association.connectedTo!; // will NOT be undefined for M:M
+
+						const joinModel: PersistentModelConstructor<
+							typeof relatedModelName
+						> = getModelConstructorByModelName(USER, relatedModelName);
+						const joinModelDefinition = getModelDefinition(joinModel);
+
+						const rightHandJoinField =
+							joinModelDefinition!.fields[connectedTo]!;
+						const {
+							model: rightHandModelName,
+							modelConstructor: rightHandModelMeta,
+						} = rightHandJoinField.type as ModelFieldType;
+
+						const rightHandModelLeftField = Object.values(
+							rightHandModelMeta?.schema.fields!
+						).find((f) => (f.type as ModelFieldType).model == joinModel.name)!;
+
+						const rightHandModel = getModelConstructorByModelName(
+							USER,
+							rightHandModelName
+						);
+
+						const resultPromise = instance.query(rightHandModel, (c) =>
+							(c[rightHandModelLeftField.name] as any).id.eq(this.id)
+						);
+						const asyncResult = new AsyncCollection(resultPromise);
+						instanceMemos[field] = asyncResult;
+						return asyncResult;
 					}
 					// unable to load related model
 					targetName && (instanceMemos[targetName] = undefined);

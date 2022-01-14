@@ -21,6 +21,9 @@ import {
 	Person,
 	Project,
 	Team,
+	LeftItem,
+	RightItem,
+	LeftRight,
 } from './model';
 let db: idb.IDBPDatabase;
 
@@ -346,7 +349,7 @@ describe('Indexed db storage test', () => {
 		expect(songs).toStrictEqual([savedSong1, savedSong2, savedSong3]);
 	});
 
-	test('query lazily MANY to MANY ', async () => {
+	test('query lazily v1 MANY to MANY ', async () => {
 		const f1 = new Forum({ title: 'forum1' });
 		const f2 = new Forum({ title: 'forum2' });
 		await DataStore.save(f1);
@@ -386,6 +389,37 @@ describe('Indexed db storage test', () => {
 		expect(editors).toStrictEqual([f1e1, f1e2]);
 		expect(forums).toStrictEqual([f1e1]);
 		expect(forums2).toStrictEqual([f1e2, f2e2]);
+	});
+
+	test('query lazily v2 MANY to MANY', async () => {
+		const left = await DataStore.save(
+			new LeftItem({
+				leftName: 'left item name',
+			})
+		);
+
+		const right = await DataStore.save(
+			new RightItem({
+				rightName: 'right item name',
+			})
+		);
+
+		const join = await DataStore.save(
+			new LeftRight({
+				LeftItem: left,
+				RightItem: right,
+			})
+		);
+
+		const testLeft = await DataStore.query(LeftItem, left.id);
+		const testRight = await DataStore.query(RightItem, right.id);
+
+		expect((await testLeft?.right?.toArray())?.map((o) => o.rightName)).toEqual(
+			['right item name']
+		);
+		expect((await testRight?.left?.toArray())?.map((o) => o.leftName)).toEqual([
+			'left item name',
+		]);
 	});
 
 	test('Memoization Test', async () => {
