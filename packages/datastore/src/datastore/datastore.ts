@@ -650,7 +650,7 @@ const createModelClass = <T extends PersistentModel>(
 
 						const rightHandModelLeftField = Object.values(
 							rightHandModelMeta?.schema.fields!
-						).find((f) => (f.type as ModelFieldType).model == joinModel.name)!;
+						).find((f) => (f.type as ModelFieldType).model === joinModel.name)!;
 
 						const rightHandModel = getModelConstructorByModelName(
 							USER,
