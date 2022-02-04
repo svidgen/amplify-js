@@ -51,7 +51,7 @@ describe('Outbox tests', () => {
 	});
 
 	it('Should return the create mutation from Outbox.peek', async () => {
-		await Storage.runExclusive(async (s) => {
+		await Storage.runExclusive(async s => {
 			let head;
 
 			while (!head) {
@@ -85,7 +85,7 @@ describe('Outbox tests', () => {
 	it('Should sync the _version from a mutation response to other items with the same `id` in the queue', async () => {
 		const last = await DataStore.query(Model, modelId);
 
-		const updatedModel1 = Model.copyOf(last, (updated) => {
+		const updatedModel1 = Model.copyOf(last, updated => {
 			updated.field1 = 'another value';
 			updated.dateCreated = new Date().toISOString();
 		});
@@ -93,7 +93,7 @@ describe('Outbox tests', () => {
 		const mutationEvent = await createMutationEvent(updatedModel1);
 		await outbox.enqueue(Storage, mutationEvent);
 
-		await Storage.runExclusive(async (s) => {
+		await Storage.runExclusive(async s => {
 			// this mutation is now "in progress"
 			let head;
 
@@ -111,14 +111,14 @@ describe('Outbox tests', () => {
 		});
 
 		// add 2 update mutations to the queue:
-		const updatedModel2 = Model.copyOf(last, (updated) => {
+		const updatedModel2 = Model.copyOf(last, updated => {
 			updated.field1 = 'another value2';
 			updated.dateCreated = new Date().toISOString();
 		});
 
 		await outbox.enqueue(Storage, await createMutationEvent(updatedModel2));
 
-		const updatedModel3 = Model.copyOf(last, (updated) => {
+		const updatedModel3 = Model.copyOf(last, updated => {
 			updated.field1 = 'another value3';
 			updated.dateCreated = new Date().toISOString();
 		});
@@ -142,9 +142,11 @@ describe('Outbox tests', () => {
 			_version: (updatedModel1 as any)._version + 1, // increment version like we would expect coming back from AppSync
 			_lastChangedAt: Date.now(),
 			_deleted: false,
+			createdAt: '2021-11-30T20:51:00.250Z',
+			updatedAt: '2021-11-30T20:52:00.250Z',
 		};
 
-		await Storage.runExclusive(async (s) => {
+		await Storage.runExclusive(async s => {
 			// process mutation response, which dequeues updatedModel1
 			// and syncs its version to the remaining item in the mutation queue
 			await processMutationResponse(
@@ -166,6 +168,8 @@ describe('Outbox tests', () => {
 				_version: inProgressData._version + 1, // increment version like we would expect coming back from AppSync
 				_lastChangedAt: Date.now(),
 				_deleted: false,
+				createdAt: '2021-11-30T20:51:00.250Z',
+				updatedAt: '2021-11-30T20:52:00.250Z',
 			};
 
 			await processMutationResponse(
@@ -182,7 +186,7 @@ describe('Outbox tests', () => {
 	it('Should NOT sync the _version from a handled conflict mutation response', async () => {
 		const last = await DataStore.query(Model, modelId);
 
-		const updatedModel1 = Model.copyOf(last, (updated) => {
+		const updatedModel1 = Model.copyOf(last, updated => {
 			updated.field1 = 'another value';
 			updated.dateCreated = new Date().toISOString();
 		});
@@ -190,7 +194,7 @@ describe('Outbox tests', () => {
 		const mutationEvent = await createMutationEvent(updatedModel1);
 		await outbox.enqueue(Storage, mutationEvent);
 
-		await Storage.runExclusive(async (s) => {
+		await Storage.runExclusive(async s => {
 			// this mutation is now "in progress"
 			let head;
 
@@ -208,7 +212,7 @@ describe('Outbox tests', () => {
 		});
 
 		// add an update mutations to the queue:
-		const updatedModel2 = Model.copyOf(last, (updated) => {
+		const updatedModel2 = Model.copyOf(last, updated => {
 			updated.field1 = 'another value2';
 			updated.dateCreated = new Date().toISOString();
 		});
@@ -234,7 +238,7 @@ describe('Outbox tests', () => {
 			_deleted: false,
 		};
 
-		await Storage.runExclusive(async (s) => {
+		await Storage.runExclusive(async s => {
 			// process mutation response, which dequeues updatedModel1
 			// but SHOULD NOT sync the _version, since the data in the response is different
 			await processMutationResponse(
@@ -281,7 +285,7 @@ describe('Outbox tests', () => {
 
 		await outbox.enqueue(Storage, mutationEvent);
 
-		const updatedModel = Model.copyOf(newModel, (updated) => {
+		const updatedModel = Model.copyOf(newModel, updated => {
 			updated.optionalField1 = optionalField1;
 		});
 
@@ -289,7 +293,7 @@ describe('Outbox tests', () => {
 
 		await outbox.enqueue(Storage, updateMutationEvent);
 
-		await Storage.runExclusive(async (s) => {
+		await Storage.runExclusive(async s => {
 			const head = await outbox.peek(s);
 			const headData = JSON.parse(head.data);
 

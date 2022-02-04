@@ -86,19 +86,17 @@ function getStorageFake(collections) {
 			predicate?: FlatModelPredicate<T>,
 			pagination?: PaginationInput<T>
 		) {
-			const baseSet: T[] = this.collections[modelConstructor.name].map(
-				(item) => {
-					const itemCopy = { ...item };
+			const baseSet: T[] = this.collections[modelConstructor.name].map(item => {
+				const itemCopy = { ...item };
 
-					return itemCopy;
-				}
-			);
+				return itemCopy;
+			});
 
 			if (!predicate) {
 				return baseSet;
 			} else {
 				const predicates = ModelPredicateCreator.getPredicates(predicate)!;
-				return baseSet.filter((item) =>
+				return baseSet.filter(item =>
 					flatPredicateMatches(item, 'and', [predicates])
 				);
 			}
@@ -137,7 +135,7 @@ describe('Predicates', () => {
 			'beginsWith',
 			'contains',
 			'notContains',
-		].forEach((operator) => {
+		].forEach(operator => {
 			describe(`\`${operator}\` when`, () => {
 				test('no argument is given', () => {
 					expect(() => {
@@ -206,7 +204,7 @@ describe('Predicates', () => {
 				'Clarice Starling',
 				'Debbie Donut',
 				'Zelda from the Legend of Zelda',
-			].map((name) => new Author({ name }));
+			].map(name => new Author({ name }));
 		};
 
 		[
@@ -224,7 +222,7 @@ describe('Predicates', () => {
 						})
 					)) as T[],
 			},
-		].forEach((mechanism) => {
+		].forEach(mechanism => {
 			describe('as ' + mechanism.name, () => {
 				// REMINDER! string comparison uses ASCII values. and lowercase > upper case
 				// e.g.: 'a' > 'A' && 'b' > 'a' && 'a' > 'Z'  === true
@@ -246,7 +244,7 @@ describe('Predicates', () => {
 					>(query);
 
 					expect(matches.length).toBe(getFlatAuthorsArrayFixture().length - 1);
-					expect(matches.some((a) => a.name === 'Adam West')).toBe(false);
+					expect(matches.some(a => a.name === 'Adam West')).toBe(false);
 				});
 
 				test('match on gt', async () => {
@@ -256,7 +254,7 @@ describe('Predicates', () => {
 					>(query);
 
 					expect(matches.length).toBe(2);
-					expect(matches.map((m) => m.name)).toEqual([
+					expect(matches.map(m => m.name)).toEqual([
 						'Debbie Donut',
 						'Zelda from the Legend of Zelda',
 					]);
@@ -269,7 +267,7 @@ describe('Predicates', () => {
 					>(query);
 
 					expect(matches.length).toBe(3);
-					expect(matches.map((m) => m.name)).toEqual([
+					expect(matches.map(m => m.name)).toEqual([
 						'Clarice Starling',
 						'Debbie Donut',
 						'Zelda from the Legend of Zelda',
@@ -283,10 +281,7 @@ describe('Predicates', () => {
 					);
 
 					expect(matches.length).toBe(2);
-					expect(matches.map((m) => m.name)).toEqual([
-						'Adam West',
-						'Bob Jones',
-					]);
+					expect(matches.map(m => m.name)).toEqual(['Adam West', 'Bob Jones']);
 				});
 
 				test('match on le', async () => {
@@ -296,7 +291,7 @@ describe('Predicates', () => {
 					);
 
 					expect(matches.length).toBe(3);
-					expect(matches.map((m) => m.name)).toEqual([
+					expect(matches.map(m => m.name)).toEqual([
 						'Adam West',
 						'Bob Jones',
 						'Clarice Starling',
@@ -325,7 +320,7 @@ describe('Predicates', () => {
 					);
 
 					expect(matches.length).toBe(5);
-					expect(matches.map((m) => m.name)).toEqual([
+					expect(matches.map(m => m.name)).toEqual([
 						'Adam West',
 						'Bob Jones',
 						'Clarice Starling',
@@ -344,7 +339,7 @@ describe('Predicates', () => {
 					);
 
 					expect(matches.length).toBe(3);
-					expect(matches.map((m) => m.name)).toEqual([
+					expect(matches.map(m => m.name)).toEqual([
 						'Bob Jones',
 						'Clarice Starling',
 						'Debbie Donut',
@@ -358,7 +353,7 @@ describe('Predicates', () => {
 					);
 
 					expect(matches.length).toBe(3);
-					expect(matches.map((m) => m.name)).toEqual([
+					expect(matches.map(m => m.name)).toEqual([
 						'Bob Jones',
 						'Clarice Starling',
 						'Debbie Donut',
@@ -391,7 +386,7 @@ describe('Predicates', () => {
 					);
 
 					expect(matches.length).toBe(4);
-					expect(matches.map((m) => m.name)).toEqual([
+					expect(matches.map(m => m.name)).toEqual([
 						'Adam West',
 						'Clarice Starling',
 						'Debbie Donut',
@@ -401,7 +396,7 @@ describe('Predicates', () => {
 
 				describe('with a logical grouping', () => {
 					test('can perform and() logic, matching an item', async () => {
-						const query = predicateFor(AuthorMeta).and((a) => [
+						const query = predicateFor(AuthorMeta).and(a => [
 							a.name.contains('Bob'),
 							a.name.contains('Jones'),
 						]);
@@ -414,7 +409,7 @@ describe('Predicates', () => {
 					});
 
 					test('can perform and() logic, matching no items', async () => {
-						const query = predicateFor(AuthorMeta).and((a) => [
+						const query = predicateFor(AuthorMeta).and(a => [
 							a.name.contains('Adam'),
 							a.name.contains('Donut'),
 						]);
@@ -426,7 +421,7 @@ describe('Predicates', () => {
 					});
 
 					test('can perform or() logic, matching different items', async () => {
-						const query = predicateFor(AuthorMeta).or((a) => [
+						const query = predicateFor(AuthorMeta).or(a => [
 							a.name.contains('Bob'),
 							a.name.contains('Donut'),
 						]);
@@ -435,14 +430,14 @@ describe('Predicates', () => {
 						);
 
 						expect(matches.length).toBe(2);
-						expect(matches.map((m) => m.name)).toEqual([
+						expect(matches.map(m => m.name)).toEqual([
 							'Bob Jones',
 							'Debbie Donut',
 						]);
 					});
 
 					test('can perform or() logic, matching a single item', async () => {
-						const query = predicateFor(AuthorMeta).or((a) => [
+						const query = predicateFor(AuthorMeta).or(a => [
 							a.name.contains('Bob'),
 							a.name.contains('Jones'),
 						]);
@@ -455,7 +450,7 @@ describe('Predicates', () => {
 					});
 
 					test('can perform or() logic, matching a single item with extra unmatched conditions', async () => {
-						const query = predicateFor(AuthorMeta).or((a) => [
+						const query = predicateFor(AuthorMeta).or(a => [
 							a.name.contains('Bob'),
 							a.name.contains('Thanos'),
 						]);
@@ -468,7 +463,7 @@ describe('Predicates', () => {
 					});
 
 					test('can perform or() logic, matching NO items', async () => {
-						const query = predicateFor(AuthorMeta).or((a) => [
+						const query = predicateFor(AuthorMeta).or(a => [
 							a.name.contains('Thanos'),
 							a.name.contains('Thor (God of Thunder, as it just so happens)'),
 						]);
@@ -480,12 +475,12 @@ describe('Predicates', () => {
 					});
 
 					test('can perform or() logic with nested and() logic', async () => {
-						const query = predicateFor(AuthorMeta).or((author_or) => [
-							author_or.and((a) => [
+						const query = predicateFor(AuthorMeta).or(author_or => [
+							author_or.and(a => [
 								a.name.contains('Bob'),
 								a.name.contains('Jones'),
 							]),
-							author_or.and((a) => [
+							author_or.and(a => [
 								a.name.contains('Debbie'),
 								a.name.contains('from the Legend of Zelda'),
 							]),
@@ -495,16 +490,16 @@ describe('Predicates', () => {
 						);
 
 						expect(matches.length).toBe(1);
-						expect(matches.map((m) => m.name)).toEqual(['Bob Jones']);
+						expect(matches.map(m => m.name)).toEqual(['Bob Jones']);
 					});
 
 					test('can perform and() logic with nested or() logic', async () => {
-						const query = predicateFor(AuthorMeta).and((author_and) => [
-							author_and.or((a) => [
+						const query = predicateFor(AuthorMeta).and(author_and => [
+							author_and.or(a => [
 								a.name.contains('Bob'),
 								a.name.contains('Donut'),
 							]),
-							author_and.or((a) => [
+							author_and.or(a => [
 								a.name.contains('Debbie'),
 								a.name.contains('from the Legend of Zelda'),
 							]),
@@ -514,11 +509,11 @@ describe('Predicates', () => {
 						);
 
 						expect(matches.length).toBe(1);
-						expect(matches.map((m) => m.name)).toEqual(['Debbie Donut']);
+						expect(matches.map(m => m.name)).toEqual(['Debbie Donut']);
 					});
 
 					test('can perform simple not() logic, matching all but one item', async () => {
-						const query = predicateFor(AuthorMeta).not((a) =>
+						const query = predicateFor(AuthorMeta).not(a =>
 							a.name.eq('Bob Jones')
 						);
 						const matches = await mechanism.execute<ModelOf<typeof Author>>(
@@ -526,7 +521,7 @@ describe('Predicates', () => {
 						);
 
 						expect(matches.length).toBe(4);
-						expect(matches.map((m) => m.name)).toEqual([
+						expect(matches.map(m => m.name)).toEqual([
 							'Adam West',
 							'Clarice Starling',
 							'Debbie Donut',
@@ -535,7 +530,7 @@ describe('Predicates', () => {
 					});
 
 					test('can perform simple not() logic, matching no items', async () => {
-						const query = predicateFor(AuthorMeta).not((a) => a.name.gt('0'));
+						const query = predicateFor(AuthorMeta).not(a => a.name.gt('0'));
 						const matches = await mechanism.execute<ModelOf<typeof Author>>(
 							query
 						);
@@ -544,8 +539,8 @@ describe('Predicates', () => {
 					});
 
 					test('can perform not() logic around another logical group, matching all but N items', async () => {
-						const query = predicateFor(AuthorMeta).not((author) =>
-							author.or((a) => [
+						const query = predicateFor(AuthorMeta).not(author =>
+							author.or(a => [
 								a.name.eq('Bob Jones'),
 								a.name.eq('Debbie Donut'),
 								a.name.between('C', 'D'),
@@ -556,34 +551,34 @@ describe('Predicates', () => {
 						);
 
 						expect(matches.length).toBe(2);
-						expect(matches.map((m) => m.name)).toEqual([
+						expect(matches.map(m => m.name)).toEqual([
 							'Adam West',
 							'Zelda from the Legend of Zelda',
 						]);
 					});
 
 					test('can perform 2-nots', async () => {
-						const query = predicateFor(AuthorMeta).not((a1) =>
-							a1.not((a2) => a2.name.eq('Bob Jones'))
+						const query = predicateFor(AuthorMeta).not(a1 =>
+							a1.not(a2 => a2.name.eq('Bob Jones'))
 						);
 						const matches = await mechanism.execute<ModelOf<typeof Author>>(
 							query
 						);
 
 						expect(matches.length).toBe(1);
-						expect(matches.map((m) => m.name)).toEqual(['Bob Jones']);
+						expect(matches.map(m => m.name)).toEqual(['Bob Jones']);
 					});
 
 					test('can perform 3-nots', async () => {
-						const query = predicateFor(AuthorMeta).not((a1) =>
-							a1.not((a2) => a2.not((a3) => a3.name.eq('Bob Jones')))
+						const query = predicateFor(AuthorMeta).not(a1 =>
+							a1.not(a2 => a2.not(a3 => a3.name.eq('Bob Jones')))
 						);
 						const matches = await mechanism.execute<ModelOf<typeof Author>>(
 							query
 						);
 
 						expect(matches.length).toBe(4);
-						expect(matches.map((m) => m.name)).toEqual([
+						expect(matches.map(m => m.name)).toEqual([
 							'Adam West',
 							'Clarice Starling',
 							'Debbie Donut',
@@ -592,17 +587,15 @@ describe('Predicates', () => {
 					});
 
 					test('can perform 4-nots', async () => {
-						const query = predicateFor(AuthorMeta).not((a1) =>
-							a1.not((a2) =>
-								a2.not((a3) => a3.not((a4) => a4.name.eq('Bob Jones')))
-							)
+						const query = predicateFor(AuthorMeta).not(a1 =>
+							a1.not(a2 => a2.not(a3 => a3.not(a4 => a4.name.eq('Bob Jones'))))
 						);
 						const matches = await mechanism.execute<ModelOf<typeof Author>>(
 							query
 						);
 
 						expect(matches.length).toBe(1);
-						expect(matches.map((m) => m.name)).toEqual(['Bob Jones']);
+						expect(matches.map(m => m.name)).toEqual(['Bob Jones']);
 					});
 
 					// NOTE: `DataStore.query(Model)` should not construct a base predicate, and there
@@ -623,7 +616,7 @@ describe('Predicates', () => {
 						);
 
 						expect(matches.length).toBe(5);
-						expect(matches.map((m) => m.name)).toEqual([
+						expect(matches.map(m => m.name)).toEqual([
 							'Adam West',
 							'Bob Jones',
 							'Clarice Starling',
@@ -645,15 +638,15 @@ describe('Predicates', () => {
 			'Zelda from the Legend of Zelda',
 		];
 
-		const owners = blogOwnerNames.map((name) => {
+		const owners = blogOwnerNames.map(name => {
 			const owner = {
 				id: `ownerId${name}`,
 				name,
-			} as ModelOf<typeof BlogOwner>; // ModelOf<ModelOf<typeof BlogOwner>>;
+			} as ModelOf<typeof BlogOwner>;
 			return owner;
 		});
 
-		const blogs = owners.map((owner) => {
+		const blogs = owners.map(owner => {
 			const blog = {
 				id: `BlogID${owner.id}`,
 				name: `${owner.name}'s Blog`,
@@ -666,8 +659,8 @@ describe('Predicates', () => {
 		});
 
 		const posts = blogs
-			.map((blog) => {
-				return [1, 2, 3, 4].map((n) => {
+			.map(blog => {
+				return [1, 2, 3, 4].map(n => {
 					const post = {
 						id: `postID${blog.id}${n}`,
 						title: `${blog.name} post ${n}`,
@@ -700,7 +693,7 @@ describe('Predicates', () => {
 						})
 					)) as T[],
 			},
-		].forEach((mechanism) => {
+		].forEach(mechanism => {
 			describe('as ' + mechanism.name, () => {
 				test('can filter eq()', async () => {
 					const query = predicateFor(BlogMeta).owner.name.eq('Adam West');
@@ -715,7 +708,7 @@ describe('Predicates', () => {
 					const matches = await mechanism.execute<ModelOf<typeof Blog>>(query);
 
 					expect(matches.length).toBe(4);
-					expect(matches.map((m) => m.name)).toEqual([
+					expect(matches.map(m => m.name)).toEqual([
 						"Adam West's Blog",
 						"Bob Jones's Blog",
 						"Clarice Starling's Blog",
@@ -724,12 +717,12 @@ describe('Predicates', () => {
 				});
 
 				test('can filter nested or() .. and()', async () => {
-					const query = predicateFor(BlogMeta).or((b) => [
-						b.owner.and((o) => [
+					const query = predicateFor(BlogMeta).or(b => [
+						b.owner.and(o => [
 							o.name.contains('Bob'),
 							o.name.contains('Jones'),
 						]),
-						b.owner.and((o) => [
+						b.owner.and(o => [
 							o.name.contains('Debbie'),
 							o.name.contains('Starling'),
 						]),
@@ -741,13 +734,10 @@ describe('Predicates', () => {
 				});
 
 				test('can filter 3 level nested, logically grouped', async () => {
-					const query = predicateFor(BlogMeta).or((b) => [
-						b.owner.and((o) => [
-							o.name.contains('Bob'),
-							o.name.contains('West'),
-						]),
-						b.owner.and((owner) => [
-							owner.blog.or((innerBlog) => [
+					const query = predicateFor(BlogMeta).or(b => [
+						b.owner.and(o => [o.name.contains('Bob'), o.name.contains('West')]),
+						b.owner.and(owner => [
+							owner.blog.or(innerBlog => [
 								innerBlog.name.contains('Debbie'),
 								innerBlog.name.contains('from the Legend of Zelda'),
 							]),
@@ -770,35 +760,35 @@ describe('Predicates', () => {
 				});
 
 				test('can filter on child collections in or()', async () => {
-					const query = predicateFor(BlogMeta).or((b) => [
+					const query = predicateFor(BlogMeta).or(b => [
 						b.posts.title.contains('Bob Jones'),
 						b.posts.title.contains("Zelda's Blog post"),
 					]);
 					const matches = await mechanism.execute<ModelOf<typeof Blog>>(query);
 
 					expect(matches.length).toBe(2);
-					expect(matches.map((m) => m.name)).toEqual([
+					expect(matches.map(m => m.name)).toEqual([
 						"Bob Jones's Blog",
 						"Zelda from the Legend of Zelda's Blog",
 					]);
 				});
 
 				test('can filter on or() extended off child collections', async () => {
-					const query = predicateFor(BlogMeta).posts.or((p) => [
+					const query = predicateFor(BlogMeta).posts.or(p => [
 						p.title.contains('Bob Jones'),
 						p.title.contains("Zelda's Blog post"),
 					]);
 					const matches = await mechanism.execute<ModelOf<typeof Blog>>(query);
 
 					expect(matches.length).toBe(2);
-					expect(matches.map((m) => m.name)).toEqual([
+					expect(matches.map(m => m.name)).toEqual([
 						"Bob Jones's Blog",
 						"Zelda from the Legend of Zelda's Blog",
 					]);
 				});
 
 				test('can filter and() between parent and child collection properties', async () => {
-					const query = predicateFor(BlogMeta).and((b) => [
+					const query = predicateFor(BlogMeta).and(b => [
 						b.name.contains('Bob Jones'),
 						b.posts.title.contains('Zelda'),
 					]);
@@ -820,9 +810,9 @@ describe('Predicates', () => {
 		];
 
 		const posts = names
-			.map((name) => {
+			.map(name => {
 				return [1, 2, 3, 4]
-					.map((n) => {
+					.map(n => {
 						const posts = [
 							{
 								id: `postID_${name}_${n}`,
@@ -831,7 +821,7 @@ describe('Predicates', () => {
 						];
 						let parent = posts[0];
 
-						[1, 2, 3, 4].map((layer) => {
+						[1, 2, 3, 4].map(layer => {
 							const child = {
 								id: `postID_${name}_${n}_${layer}`,
 								title: `${name} post ${n} layer ${layer}`,
@@ -862,7 +852,7 @@ describe('Predicates', () => {
 						})
 					)) as T[],
 			},
-		].forEach((mechanism) => {
+		].forEach(mechanism => {
 			describe('as ' + mechanism.name, () => {
 				test('can filter 1 level deep', async () => {
 					const query = predicateFor(PostMeta).reference.title.eq(
@@ -871,9 +861,7 @@ describe('Predicates', () => {
 					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
 
 					expect(matches.length).toBe(1);
-					expect(matches.map((p) => p.title)).toEqual([
-						'Bob Jones post 2 ROOT',
-					]);
+					expect(matches.map(p => p.title)).toEqual(['Bob Jones post 2 ROOT']);
 				});
 
 				test('can filter 2 levels deep', async () => {
@@ -883,9 +871,7 @@ describe('Predicates', () => {
 					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
 
 					expect(matches.length).toBe(1);
-					expect(matches.map((p) => p.title)).toEqual([
-						'Bob Jones post 2 ROOT',
-					]);
+					expect(matches.map(p => p.title)).toEqual(['Bob Jones post 2 ROOT']);
 				});
 
 				test('can filter 3 levels deep', async () => {
@@ -895,9 +881,7 @@ describe('Predicates', () => {
 					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
 
 					expect(matches.length).toBe(1);
-					expect(matches.map((p) => p.title)).toEqual([
-						'Bob Jones post 2 ROOT',
-					]);
+					expect(matches.map(p => p.title)).toEqual(['Bob Jones post 2 ROOT']);
 				});
 
 				test('safely returns [] on too many levels deep', async () => {
@@ -919,7 +903,7 @@ describe('Predicates', () => {
 					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
 
 					expect(matches.length).toBe(20);
-					expect(matches.map((m) => m.title)).toEqual([
+					expect(matches.map(m => m.title)).toEqual([
 						'Adam West post 1 ROOT',
 						'Adam West post 2 ROOT',
 						'Adam West post 3 ROOT',
@@ -944,7 +928,7 @@ describe('Predicates', () => {
 				});
 
 				test('can filter at various levels', async () => {
-					const query = predicateFor(PostMeta).and((top) => [
+					const query = predicateFor(PostMeta).and(top => [
 						top.title.contains('3'),
 						top.reference.title.contains('West'),
 						top.reference.reference.title.contains('layer 2'),
@@ -952,13 +936,11 @@ describe('Predicates', () => {
 					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
 
 					expect(matches.length).toBe(1);
-					expect(matches.map((m) => m.title)).toEqual([
-						'Adam West post 3 ROOT',
-					]);
+					expect(matches.map(m => m.title)).toEqual(['Adam West post 3 ROOT']);
 				});
 
 				test('can filter at various levels with range conditions', async () => {
-					const query = predicateFor(PostMeta).and((top) => [
+					const query = predicateFor(PostMeta).and(top => [
 						top.title.ge('Bob Jones post 2 ROOT'),
 						top.reference.title.lt('Zelda'),
 						top.reference.reference.title.contains('layer 2'),
@@ -966,7 +948,7 @@ describe('Predicates', () => {
 					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
 
 					expect(matches.length).toBe(11);
-					expect(matches.map((m) => m.title)).toEqual([
+					expect(matches.map(m => m.title)).toEqual([
 						'Bob Jones post 2 ROOT',
 						'Bob Jones post 3 ROOT',
 						'Bob Jones post 4 ROOT',
@@ -985,7 +967,7 @@ describe('Predicates', () => {
 	});
 
 	describe('on many to many relations', () => {
-		const leftItems = [1, 2, 3, 4, 5].map((id) => {
+		const leftItems = [1, 2, 3, 4, 5].map(id => {
 			return {
 				id: String(id),
 				leftName: `LeftItem name ${id}`,
@@ -993,7 +975,7 @@ describe('Predicates', () => {
 			} as ModelOf<typeof LeftItem>;
 		});
 
-		const rightItems = [1, 2, 3, 4, 5].map((id) => {
+		const rightItems = [1, 2, 3, 4, 5].map(id => {
 			return {
 				id: String(id),
 				rightName: `RightItem name ${id}`,
@@ -1031,12 +1013,12 @@ describe('Predicates', () => {
 				execute: async <T>(query: any) => query.filter(leftRightItems) as T[],
 			};
 
-			const query = predicateFor(LeftRightMeta).and((lr) => [
+			const query = predicateFor(LeftRightMeta).and(lr => [
 				lr.LeftItem.leftName.gt('LeftItem name 1'),
 				lr.RightItem.rightName.le('RightItem name 4'),
 			]);
 			const results = await mechanism.execute<ModelOf<typeof LeftRight>>(query);
-			expect(results.map((o) => o.id)).toEqual(['2.3', '2.4', '3.4']);
+			expect(results.map(o => o.id)).toEqual(['2.3', '2.4', '3.4']);
 		});
 
 		[
@@ -1055,57 +1037,57 @@ describe('Predicates', () => {
 						})
 					)) as T[],
 			},
-		].forEach((mechanism) => {
+		].forEach(mechanism => {
 			describe('as ' + mechanism.name, () => {
 				test('can filter on M:M child item property with eq()', async () => {
 					const query =
 						predicateFor(LeftMeta).right.rightName.eq('RightItem name 3');
 					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
-					expect(matches.map((li) => li.id)).toEqual(['1', '2']);
+					expect(matches.map(li => li.id)).toEqual(['1', '2']);
 				});
 
 				test('can filter on M:M child item property with ne()', async () => {
 					const query =
 						predicateFor(LeftMeta).right.rightName.ne('RightItem name 5');
 					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
-					expect(matches.map((li) => li.id)).toEqual(['1', '2', '3']);
+					expect(matches.map(li => li.id)).toEqual(['1', '2', '3']);
 				});
 
 				test('can filter on M:M child item property with lt()', async () => {
 					const query =
 						predicateFor(LeftMeta).right.rightName.lt('RightItem name 3');
 					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
-					expect(matches.map((li) => li.id)).toEqual(['1']);
+					expect(matches.map(li => li.id)).toEqual(['1']);
 				});
 
 				test('can filter on M:M child item property with le()', async () => {
 					const query =
 						predicateFor(LeftMeta).right.rightName.le('RightItem name 3');
 					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
-					expect(matches.map((li) => li.id)).toEqual(['1', '2']);
+					expect(matches.map(li => li.id)).toEqual(['1', '2']);
 				});
 
 				test('can filter on M:M child item property with beginsWith()', async () => {
 					const query =
 						predicateFor(LeftMeta).right.rightName.beginsWith('RightItem name');
 					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
-					expect(matches.map((li) => li.id)).toEqual(['1', '2', '3', '4']);
+					expect(matches.map(li => li.id)).toEqual(['1', '2', '3', '4']);
 				});
 
 				test('can filter on M:M child item property with beginsWith() non-match', async () => {
 					const query =
 						predicateFor(LeftMeta).right.rightName.beginsWith('NO MATCH');
 					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
-					expect(matches.map((li) => li.id)).toEqual([]);
+					expect(matches.map(li => li.id)).toEqual([]);
 				});
 
 				test('can filter on M:M on both sides', async () => {
-					const query = predicateFor(LeftMeta).and((l) => [
+					const query = predicateFor(LeftMeta).and(l => [
 						l.leftName.ge('LeftItem name 2'),
 						l.right.rightName.le('RightItem name 4'),
 					]);
 					const matches = await mechanism.execute<ModelOf<typeof Post>>(query);
-					expect(matches.map((li) => li.id)).toEqual(['2', '3']);
+					expect(matches.map(li => li.id)).toEqual(['2', '3']);
 				});
 			});
 		});

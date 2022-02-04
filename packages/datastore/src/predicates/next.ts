@@ -238,7 +238,7 @@ export class FieldCondition {
 		 * Throws an exception if the `count` disagrees with `operands.length`.
 		 * @param count The number of `operands` expected.
 		 */
-		const argumentCount = (count) => {
+		const argumentCount = count => {
 			const argsClause = count === 1 ? 'argument is' : 'arguments are';
 			return () => {
 				if (this.operands.length !== count) {
@@ -328,7 +328,7 @@ export class GroupCondition {
 		let extractedCopy: GroupCondition | undefined =
 			extract === this ? copied : undefined;
 
-		this.operands.forEach((o) => {
+		this.operands.forEach(o => {
 			const [operandCopy, extractedFromOperand] = o.copy(extract);
 			copied.operands.push(operandCopy);
 			extractedCopy = extractedCopy || extractedFromOperand;
@@ -399,11 +399,11 @@ export class GroupCondition {
 		const negateChildren = negate !== (this.operator === 'not');
 
 		const groups = this.operands.filter(
-			(op) => op instanceof GroupCondition
+			op => op instanceof GroupCondition
 		) as GroupCondition[];
 
 		const conditions = this.operands.filter(
-			(op) => op instanceof FieldCondition
+			op => op instanceof FieldCondition
 		) as FieldCondition[];
 
 		function prettyQuery(query) {
@@ -494,8 +494,8 @@ export class GroupCondition {
 
 					const predicate = FlatModelPredicateCreator.createFromExisting(
 						this.model.schema,
-						(p) =>
-							p.or((inner) =>
+						p =>
+							p.or(inner =>
 								applyConditionsToV1Predicate(
 									inner,
 									joinConditions,
@@ -521,8 +521,8 @@ export class GroupCondition {
 		if (conditions.length > 0) {
 			const predicate = FlatModelPredicateCreator.createFromExisting(
 				this.model.schema,
-				(p) =>
-					p[operator]((c) =>
+				p =>
+					p[operator](c =>
 						applyConditionsToV1Predicate(c, conditions, negateChildren)
 					)
 			);
@@ -536,8 +536,8 @@ export class GroupCondition {
 		// PK might be a single field, like `id`, or it might be several fields.
 		// so, we'll need to extract the list of PK fields from an object
 		// and stringify the list it for easy comparision / merging.
-		const getPKValue = (item) =>
-			JSON.stringify(this.model.pkField.map((name) => item[name]));
+		const getPKValue = item =>
+			JSON.stringify(this.model.pkField.map(name => item[name]));
 
 		// will be used for intersecting or unioning results
 		let resultIndex: Map<string, Record<string, any>> | undefined;
@@ -551,10 +551,10 @@ export class GroupCondition {
 			// that aren't present in each subsequent group.
 			for (const group of resultGroups) {
 				if (resultIndex === undefined) {
-					resultIndex = new Map(group.map((item) => [getPKValue(item), item]));
+					resultIndex = new Map(group.map(item => [getPKValue(item), item]));
 				} else {
 					const intersectWith = new Map<string, Record<string, any>>(
-						group.map((item) => [getPKValue(item), item])
+						group.map(item => [getPKValue(item), item])
 					);
 					for (const k of resultIndex.keys()) {
 						if (!intersectWith.has(k)) {
@@ -618,9 +618,9 @@ export class GroupCondition {
 		}
 
 		if (this.operator === 'or') {
-			return asyncSome(this.operands, (c) => c.matches(itemToCheck));
+			return asyncSome(this.operands, c => c.matches(itemToCheck));
 		} else if (this.operator === 'and') {
-			return asyncEvery(this.operands, (c) => c.matches(itemToCheck));
+			return asyncEvery(this.operands, c => c.matches(itemToCheck));
 		} else if (this.operator === 'not') {
 			if (this.operands.length !== 1) {
 				throw new Error(
@@ -691,14 +691,14 @@ export function predicateFor<T extends PersistentModel>(
 			const [query, newtail] = link.__query.copy(link.__tail);
 			return predicateFor(ModelType, undefined, query, newtail);
 		},
-		filter: (items) => {
-			return asyncFilter(items, (i) => link.__query.matches(i));
+		filter: items => {
+			return asyncFilter(items, i => link.__query.matches(i));
 		},
 	} as ModelPredicate<T>;
 
 	// TODO: consider a proxy
 	// adds .or() and .and() methods to the link.
-	['and', 'or'].forEach((op) => {
+	['and', 'or'].forEach(op => {
 		(link as any)[op] = (
 			...builderOrPredicates:
 				| [ModelPredicateExtender<T>]
@@ -719,12 +719,10 @@ export function predicateFor<T extends PersistentModel>(
 					typeof builderOrPredicates[0] === 'function'
 						? // handle the the `c => [c.field.eq(v)]` form
 						  builderOrPredicates[0](predicateFor(ModelType)).map(
-								(p) => p.__query
+								p => p.__query
 						  )
 						: // handle the `[MyModel.field.eq(v)]` form (not yet available)
-						  (builderOrPredicates as FinalModelPredicate[]).map(
-								(p) => p.__query
-						  )
+						  (builderOrPredicates as FinalModelPredicate[]).map(p => p.__query)
 				)
 			);
 
@@ -732,8 +730,8 @@ export function predicateFor<T extends PersistentModel>(
 			return {
 				__query: newlink.__query,
 				__tail: newlink.__tail,
-				filter: (items) => {
-					return asyncFilter(items, (i) => newlink.__query.matches(i));
+				filter: items => {
+					return asyncFilter(items, i => newlink.__query.matches(i));
 				},
 			};
 		};
@@ -770,8 +768,8 @@ export function predicateFor<T extends PersistentModel>(
 		return {
 			__query: newlink.__query,
 			__tail: newlink.__tail,
-			filter: (items) => {
-				return asyncFilter(items, (i) => newlink.__query.matches(i));
+			filter: items => {
+				return asyncFilter(items, i => newlink.__query.matches(i));
 			},
 		};
 	};
@@ -816,9 +814,7 @@ export function predicateFor<T extends PersistentModel>(
 									__query: newlink.__query,
 									__tail: newlink.__tail,
 									filter: (items: any[]) => {
-										return asyncFilter(items, (i) =>
-											newlink.__query.matches(i)
-										);
+										return asyncFilter(items, i => newlink.__query.matches(i));
 									},
 								};
 							},
@@ -835,7 +831,9 @@ export function predicateFor<T extends PersistentModel>(
 
 						const relatedMeta = (def.type as ModelFieldType).modelConstructor;
 						if (!relatedMeta) {
-							throw new Error('Related model metadata is missing');
+							throw new Error(
+								'Related model metadata is missing. This is a bug! Please report it.'
+							);
 						}
 
 						// `Model.reletedModelField` returns a copy of the original link,
@@ -955,7 +953,7 @@ export function predicateFor<T extends PersistentModel>(
 						return newlink;
 					} else {
 						throw new Error(
-							"Oh no! Related Model definition doesn't have a typedef!"
+							"Related model definition doesn't have a typedef. This is a bug! Please report it."
 						);
 					}
 				}
