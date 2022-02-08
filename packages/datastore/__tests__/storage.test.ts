@@ -58,7 +58,7 @@ describe('Storage tests', () => {
 				);
 
 				await DataStore.save(
-					Model.copyOf(model, (draft) => {
+					Model.copyOf(model, draft => {
 						draft.field1 = 'edited';
 					})
 				);
@@ -91,7 +91,7 @@ describe('Storage tests', () => {
 				);
 
 				await DataStore.save(
-					Model.copyOf(model, (draft) => {
+					Model.copyOf(model, draft => {
 						draft.field1 = 'Some value';
 					})
 				);
@@ -120,7 +120,7 @@ describe('Storage tests', () => {
 				);
 
 				await DataStore.save(
-					Model.copyOf(model, (draft) => {
+					Model.copyOf(model, draft => {
 						draft.optionalField1 = null!;
 					})
 				);
@@ -146,7 +146,7 @@ describe('Storage tests', () => {
 				);
 
 				await DataStore.save(
-					Model.copyOf(model, (draft) => {
+					Model.copyOf(model, draft => {
 						draft.optionalField1 = undefined;
 					})
 				);
@@ -172,7 +172,7 @@ describe('Storage tests', () => {
 				);
 
 				await DataStore.save(
-					Model.copyOf(model, (draft) => {
+					Model.copyOf(model, draft => {
 						draft.emails = [...draft.emails, 'joe@doe.com'];
 					})
 				);
@@ -206,7 +206,7 @@ describe('Storage tests', () => {
 				);
 
 				await DataStore.save(
-					Model.copyOf(model, (draft) => {
+					Model.copyOf(model, draft => {
 						draft.emails!.push('joe@doe.com');
 					})
 				);
@@ -240,7 +240,7 @@ describe('Storage tests', () => {
 				);
 
 				await DataStore.save(
-					Model.copyOf(model, (draft) => {
+					Model.copyOf(model, draft => {
 						draft.field1 = 'Updated value';
 						// same as above. should not be included in mutation input
 						draft.emails = ['john@doe.com', 'jane@doe.com'];
@@ -270,7 +270,7 @@ describe('Storage tests', () => {
 				);
 
 				await DataStore.save(
-					Model.copyOf(model, (draft) => {
+					Model.copyOf(model, draft => {
 						// same as above. should not result in mutation event
 						draft.emails = ['john@doe.com', 'jane@doe.com'];
 					})
@@ -297,7 +297,7 @@ describe('Storage tests', () => {
 				);
 
 				await DataStore.save(
-					Model.copyOf(model, (draft) => {
+					Model.copyOf(model, draft => {
 						draft.emails = null!;
 					})
 				);
@@ -327,7 +327,7 @@ describe('Storage tests', () => {
 				);
 
 				await DataStore.save(
-					Model.copyOf(model, (draft) => {
+					Model.copyOf(model, draft => {
 						draft.metadata = {
 							...draft.metadata,
 							penNames: ['bob'],
@@ -370,7 +370,7 @@ describe('Storage tests', () => {
 				);
 
 				await DataStore.save(
-					Model.copyOf(model, (draft) => {
+					Model.copyOf(model, draft => {
 						draft.metadata!.penNames = ['bob'];
 					})
 				);
@@ -388,12 +388,6 @@ describe('Storage tests', () => {
 				expect(modelUpdate.element.metadata).toMatchObject(
 					expectedValueMetadata
 				);
-			});
-
-			test('TENTATIVE: directly modifying nested model raises hell', () => {
-				// but NOT this one. (post is a model type)
-				// (draft.post as any).title = 'whatever';
-				// TODO ???
 			});
 
 			test('allowing nested BELONGS_TO to be set', async () => {
@@ -424,7 +418,7 @@ describe('Storage tests', () => {
 				);
 
 				await DataStore.save(
-					Comment.copyOf(comment, (draft) => {
+					Comment.copyOf(comment, draft => {
 						draft.post = newPost;
 					})
 				);
@@ -436,7 +430,8 @@ describe('Storage tests', () => {
 				);
 			});
 
-			// TODO
+			// TODO.
+			// Uncomment this test when implementing cascading saves
 			test.skip('allowing nested HAS_MANY to be set', async () => {
 				const classes = initSchema(testSchema());
 
@@ -464,7 +459,7 @@ describe('Storage tests', () => {
 				});
 
 				await DataStore.save(
-					Post.copyOf(post, (updated) => {
+					Post.copyOf(post, updated => {
 						updated.comments = [
 							comment,
 							new Comment({
@@ -477,14 +472,10 @@ describe('Storage tests', () => {
 				const test = await DataStore.query(Post, post.id);
 
 				// might have to sort
-				expect((await test!.comments.toArray()).map((c) => c.content)).toEqual([
+				expect((await test!.comments.toArray()).map(c => c.content)).toEqual([
 					'comment 1',
 					'comment 2',
 				]);
-			});
-
-			test('allowing nested HAS_ONE to be set', async () => {
-				// TODO
 			});
 
 			test('custom type unchanged', async () => {
@@ -507,7 +498,7 @@ describe('Storage tests', () => {
 				);
 
 				await DataStore.save(
-					Model.copyOf(model, (draft) => {
+					Model.copyOf(model, draft => {
 						draft.field1 = 'Updated value';
 						draft.metadata = {
 							author: 'some author',
@@ -552,7 +543,7 @@ describe('Storage tests', () => {
 				);
 
 				await DataStore.save(
-					Comment.copyOf(comment, (updated) => {
+					Comment.copyOf(comment, updated => {
 						updated.post = anotherPost;
 					})
 				);
@@ -591,21 +582,21 @@ describe('Storage tests', () => {
 				// `sort` is part of the key's composite sort key.
 				// `created` should also be included in the mutation input
 				const updated1 = await DataStore.save(
-					PostComposite.copyOf(post, (updated) => {
+					PostComposite.copyOf(post, updated => {
 						updated.sort = 101;
 					})
 				);
 
 				// `title` is the HK, so `sort` and `created` should NOT be included in the input
 				const updated2 = await DataStore.save(
-					PostComposite.copyOf(updated1, (updated) => {
+					PostComposite.copyOf(updated1, updated => {
 						updated.title = 'Updated Title';
 					})
 				);
 
 				// `description` does not belong to a key. No other fields should be included
 				await DataStore.save(
-					PostComposite.copyOf(updated2, (updated) => {
+					PostComposite.copyOf(updated2, updated => {
 						updated.description = 'Updated Desc';
 					})
 				);
@@ -647,7 +638,7 @@ describe('Storage tests', () => {
 				);
 
 				await DataStore.save(
-					PostCustomPK.copyOf(post, (updated) => {
+					PostCustomPK.copyOf(post, updated => {
 						updated.title = 'Updated';
 					})
 				);
@@ -677,7 +668,7 @@ describe('Storage tests', () => {
 				);
 
 				await DataStore.save(
-					PostCustomPKSort.copyOf(post, (updated) => {
+					PostCustomPKSort.copyOf(post, updated => {
 						updated.title = 'Updated';
 					})
 				);
@@ -708,7 +699,7 @@ describe('Storage tests', () => {
 				);
 
 				await DataStore.save(
-					PostCustomPKComposite.copyOf(post, (updated) => {
+					PostCustomPKComposite.copyOf(post, updated => {
 						updated.title = 'Updated';
 					})
 				);

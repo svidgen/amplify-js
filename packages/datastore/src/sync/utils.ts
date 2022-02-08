@@ -104,11 +104,9 @@ function getOwnerFields(
 ): string[] {
 	const ownerFields: string[] = [];
 	if (isSchemaModel(modelDefinition) && modelDefinition.attributes) {
-		modelDefinition.attributes.forEach((attr) => {
+		modelDefinition.attributes.forEach(attr => {
 			if (attr.properties && attr.properties.rules) {
-				const rule = attr.properties.rules.find(
-					(rule) => rule.allow === 'owner'
-				);
+				const rule = attr.properties.rules.find(rule => rule.allow === 'owner');
 				if (rule && rule.ownerField) {
 					ownerFields.push(rule.ownerField);
 				}
@@ -124,7 +122,7 @@ function getScalarFields(
 	const { fields } = modelDefinition;
 
 	const result = Object.values(fields)
-		.filter((field) => {
+		.filter(field => {
 			if (isGraphQLScalarType(field.type) || isEnumFieldType(field.type)) {
 				return true;
 			}
@@ -181,7 +179,7 @@ function getNonModelFields(
 			);
 
 			const nested: string[] = [];
-			Object.values(typeDefinition.fields).forEach((field) => {
+			Object.values(typeDefinition.fields).forEach(field => {
 				const { type, name } = field;
 
 				if (isNonModelFieldType(type)) {
@@ -205,13 +203,13 @@ export function getAuthorizationRules(
 	// Searching for owner authorization on attributes
 	const authConfig = ([] as ModelAttributes)
 		.concat(modelDefinition.attributes || [])
-		.find((attr) => attr && attr.type === 'auth');
+		.find(attr => attr && attr.type === 'auth');
 
 	const { properties: { rules = [] } = {} } = authConfig || {};
 
 	const resultRules: AuthorizationRule[] = [];
 	// Multiple rules can be declared for allow: owner
-	rules.forEach((rule) => {
+	rules.forEach(rule => {
 		// setting defaults for backwards compatibility with old cli
 		const {
 			identityClaim = 'cognito:username',
@@ -245,7 +243,7 @@ export function getAuthorizationRules(
 			// only pay attention to the public level
 			const modelConfig = ([] as ModelAttributes)
 				.concat(modelDefinition.attributes || [])
-				.find((attr) => attr && attr.type === 'model');
+				.find(attr => attr && attr.type === 'model');
 
 			// find the subscriptions level. ON is default
 			const { properties: { subscriptions: { level = 'on' } = {} } = {} } =
@@ -434,7 +432,7 @@ export function predicateToGraphQLCondition(
 		return result;
 	}
 
-	predicate.predicates.forEach((p) => {
+	predicate.predicates.forEach(p => {
 		if (isPredicateObj(p)) {
 			const { field, operator, operand } = p;
 
@@ -465,10 +463,10 @@ export function predicateToGraphQLFilter(
 
 	result[type] = isList ? [] : {};
 
-	const appendToFilter = (value) =>
+	const appendToFilter = value =>
 		isList ? result[type].push(value) : (result[type] = value);
 
-	predicates.forEach((predicate) => {
+	predicates.forEach(predicate => {
 		if (isPredicateObj(predicate)) {
 			const { field, operator, operand } = predicate;
 
@@ -532,7 +530,7 @@ export async function getModelAuthModes({
 
 	try {
 		await Promise.all(
-			operations.map(async (operation) => {
+			operations.map(async operation => {
 				const authModes = await authModeStrategy({
 					schema,
 					modelName,
@@ -562,7 +560,7 @@ export function getForbiddenError(error) {
 	];
 	let forbiddenError;
 	if (error && error.errors) {
-		forbiddenError = (error.errors as [any]).find((err) =>
+		forbiddenError = (error.errors as [any]).find(err =>
 			forbiddenErrorMessages.includes(err.message)
 		);
 	} else if (error && error.message) {
@@ -580,7 +578,7 @@ export function getClientSideAuthError(error) {
 	const clientSideError =
 		error &&
 		error.message &&
-		clientSideAuthErrors.find((clientError) =>
+		clientSideAuthErrors.find(clientError =>
 			error.message.includes(clientError)
 		);
 	return clientSideError || null;

@@ -171,7 +171,7 @@ export class SQLiteAdapter implements StorageAdapter {
 		);
 
 		if (connectionTableNames.length === 0) {
-			return records.map((record) =>
+			return records.map(record =>
 				this.modelInstanceCreator(modelConstructor, record)
 			);
 		}
@@ -193,21 +193,19 @@ export class SQLiteAdapter implements StorageAdapter {
 			switch (relationType) {
 				case 'HAS_ONE':
 					for await (const recordItem of records) {
-						if (recordItem[fieldName]) {
-							const [queryStatement, params] = queryByIdStatement(
-								recordItem[fieldName],
-								tableName
-							);
+						const getByfield = recordItem[targetName] ? targetName : fieldName;
+						if (!recordItem[getByfield]) break;
 
-							const connectionRecord = await this.db.get(
-								queryStatement,
-								params
-							);
+						const [queryStatement, params] = queryByIdStatement(
+							recordItem[getByfield],
+							tableName
+						);
 
-							recordItem[fieldName] =
-								connectionRecord &&
-								this.modelInstanceCreator(modelConstructor, connectionRecord);
-						}
+						const connectionRecord = await this.db.get(queryStatement, params);
+
+						recordItem[fieldName] =
+							connectionRecord &&
+							this.modelInstanceCreator(modelConstructor, connectionRecord);
 					}
 
 					break;
@@ -239,7 +237,7 @@ export class SQLiteAdapter implements StorageAdapter {
 			}
 		}
 
-		return records.map((record) =>
+		return records.map(record =>
 			this.modelInstanceCreator(modelConstructor, record)
 		);
 	}
@@ -301,7 +299,7 @@ export class SQLiteAdapter implements StorageAdapter {
 		const idPredicate =
 			predicateObjs.length === 1 &&
 			(predicateObjs.find(
-				(p) => isPredicateObj(p) && p.field === 'id' && p.operator === 'eq'
+				p => isPredicateObj(p) && p.field === 'id' && p.operator === 'eq'
 			) as PredicateObject<T>);
 
 		return idPredicate && idPredicate.operand;

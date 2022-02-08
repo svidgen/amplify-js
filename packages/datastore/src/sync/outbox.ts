@@ -12,7 +12,7 @@ import {
 	PersistentModelConstructor,
 	QueryOne,
 } from '../types';
-import { SYNC, valuesEqual } from '../util';
+import { USER, SYNC, valuesEqual } from '../util';
 import { TransformerMutationType } from './utils';
 
 // TODO: Persist deleted ids
@@ -30,13 +30,13 @@ class MutationEventOutbox {
 		storage: Storage,
 		mutationEvent: MutationEvent
 	): Promise<void> {
-		storage.runExclusive(async (s) => {
+		storage.runExclusive(async s => {
 			const mutationEventModelDefinition =
 				this.schema.namespaces[SYNC].models['MutationEvent'];
 
 			const predicate = ModelPredicateCreator.createFromExisting<MutationEvent>(
 				mutationEventModelDefinition,
-				(c) =>
+				c =>
 					c
 						.modelId('eq', mutationEvent.modelId)
 						.id('ne', this.inProgressMutationEventId)
@@ -61,7 +61,7 @@ class MutationEventOutbox {
 					// data loss, since update mutations only include changed fields
 					const merged = this.mergeUserFields(first, mutationEvent);
 					await s.save(
-						this.MutationEvent.copyOf(first, (draft) => {
+						this.MutationEvent.copyOf(first, draft => {
 							draft.data = merged.data;
 						}),
 						undefined,
@@ -130,7 +130,7 @@ class MutationEventOutbox {
 			this.MutationEvent,
 			ModelPredicateCreator.createFromExisting(
 				mutationEventModelDefinition,
-				(c) => c.modelId('eq', model.id)
+				c => c.modelId('eq', model.id)
 			)
 		);
 
@@ -160,7 +160,9 @@ class MutationEventOutbox {
 			return;
 		}
 
-		const { _version, _lastChangedAt, _deleted, ...incomingData } = record;
+		const { _version, _lastChangedAt, _deleted, ..._incomingData } = record;
+		const incomingData = this.removeTimestampFields(head.model, _incomingData);
+
 		const data = JSON.parse(head.data);
 
 		if (!data) {
@@ -171,8 +173,9 @@ class MutationEventOutbox {
 			_version: __version,
 			_lastChangedAt: __lastChangedAt,
 			_deleted: __deleted,
-			...outgoingData
+			..._outgoingData
 		} = data;
+		const outgoingData = this.removeTimestampFields(head.model, _outgoingData);
 
 		// Don't sync the version when the data in the response does not match the data
 		// in the request, i.e., when there's a handled conflict
@@ -185,7 +188,7 @@ class MutationEventOutbox {
 
 		const predicate = ModelPredicateCreator.createFromExisting<MutationEvent>(
 			mutationEventModelDefinition,
-			(c) => c.modelId('eq', record.id).id('ne', this.inProgressMutationEventId)
+			c => c.modelId('eq', record.id).id('ne', this.inProgressMutationEventId)
 		);
 
 		const outdatedMutations = await storage.query(
@@ -197,12 +200,12 @@ class MutationEventOutbox {
 			return;
 		}
 
-		const reconciledMutations = outdatedMutations.map((m) => {
+		const reconciledMutations = outdatedMutations.map(m => {
 			const oldData = JSON.parse(m.data);
 
 			const newData = { ...oldData, _version, _lastChangedAt };
 
-			return this.MutationEvent.copyOf(m, (draft) => {
+			return this.MutationEvent.copyOf(m, draft => {
 				draft.data = JSON.stringify(newData);
 			});
 		});
@@ -211,7 +214,7 @@ class MutationEventOutbox {
 
 		await Promise.all(
 			reconciledMutations.map(
-				async (m) => await storage.save(m, undefined, this.ownSymbol)
+				async m => await storage.save(m, undefined, this.ownSymbol)
 			)
 		);
 	}
@@ -244,6 +247,49 @@ class MutationEventOutbox {
 			...current,
 			data,
 		});
+	}
+
+	/* 
+	if a model is using custom timestamp fields
+	the custom field names will be stored in the model attributes
+
+	e.g.
+	"attributes": [
+    {
+			"type": "model",
+			"properties": {
+				"timestamps": {
+					"createdAt": "createdOn",
+					"updatedAt": "updatedOn"
+				}
+			}
+    }
+	]
+	*/
+	private removeTimestampFields(
+		model: string,
+		record: PersistentModel
+	): PersistentModel {
+		const CREATED_AT_DEFAULT_KEY = 'createdAt';
+		const UPDATED_AT_DEFAULT_KEY = 'updatedAt';
+
+		let createdTimestampKey = CREATED_AT_DEFAULT_KEY;
+		let updatedTimestampKey = UPDATED_AT_DEFAULT_KEY;
+
+		const modelAttributes = this.schema.namespaces[USER].models[
+			model
+		].attributes?.find(attr => attr.type === 'model');
+		const timestampFieldsMap = modelAttributes?.properties?.timestamps;
+
+		if (timestampFieldsMap) {
+			createdTimestampKey = timestampFieldsMap[CREATED_AT_DEFAULT_KEY];
+			updatedTimestampKey = timestampFieldsMap[UPDATED_AT_DEFAULT_KEY];
+		}
+
+		delete (record as Record<string, any>)[createdTimestampKey];
+		delete (record as Record<string, any>)[updatedTimestampKey];
+
+		return record;
 	}
 }
 
