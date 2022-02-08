@@ -10,7 +10,6 @@ import {
 import { ModelPredicateCreator as FlatModelPredicateCreator } from './index';
 import { ExclusiveStorage as StorageAdapter } from '../storage/storage';
 import { asyncSome, asyncEvery, asyncFilter } from '../util';
-import { Model } from '../../__tests__/helpers';
 
 type MatchableTypes =
 	| string
