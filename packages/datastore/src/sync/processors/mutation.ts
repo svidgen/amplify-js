@@ -209,6 +209,7 @@ class MutationProcessor {
 				continue;
 			}
 
+			console.log('mutation result', result);
 			const record = result.data[opName];
 			let hasMore = false;
 

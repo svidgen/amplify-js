@@ -45,7 +45,8 @@
 		"@types/uuid": "3.4.5",
 		"dexie": "3.2.2",
 		"dexie-export-import": "1.0.3",
-		"fake-indexeddb": "3.0.0"
+		"fake-indexeddb": "3.0.0",
+		"graphql": "15.8.0"
 	},
 	"dependencies": {
 		"@aws-amplify/api": "4.0.42",

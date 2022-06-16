@@ -53,7 +53,7 @@ describe('IndexedDBAdapter tests', () => {
 		const spyOnEngine = jest.spyOn(IDBAdapter, 'enginePagination');
 		const spyOnMemory = jest.spyOn(IDBAdapter, 'inMemoryPagination');
 
-		beforeAll(async () => {
+		beforeEach(async () => {
 			({ initSchema, DataStore } = require('../src/datastore/datastore'));
 			DataStore.configure({ storageAdapter: Adapter });
 
@@ -157,7 +157,7 @@ describe('IndexedDBAdapter tests', () => {
 		let profile1Id: string;
 		let user1Id: string;
 
-		beforeAll(async () => {
+		beforeEach(async () => {
 			({ initSchema, DataStore } = require('../src/datastore/datastore'));
 
 			const classes = initSchema(testSchema());

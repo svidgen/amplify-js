@@ -31,7 +31,7 @@ class MutationEventOutbox {
 		storage: Storage,
 		mutationEvent: MutationEvent
 	): Promise<void> {
-		storage.runExclusive(async s => {
+		await storage.runExclusive(async s => {
 			const mutationEventModelDefinition =
 				this.schema.namespaces[SYNC].models['MutationEvent'];
 
@@ -151,6 +151,14 @@ class MutationEventOutbox {
 	// applies _version from the AppSync mutation response to other items
 	// in the mutation queue with the same id
 	// see https://github.com/aws-amplify/amplify-js/pull/7354 for more details
+
+	/**
+	 * If `record` + `recordOp` matches a `head` item from `storage`,
+	 * @param storage storage adapter operate against
+	 * @param record record to check against the outbox head
+	 * @param head head record from the outbox to check
+	 * @param recordOp the operation that `record` was presumably in the result set of
+	 */
 	private async syncOutboxVersionsOnDequeue(
 		storage: StorageClass,
 		record: PersistentModel,
@@ -220,6 +228,11 @@ class MutationEventOutbox {
 		);
 	}
 
+	/**
+	 *
+	 * @param previous
+	 * @param current
+	 */
 	private mergeUserFields(
 		previous: MutationEvent,
 		current: MutationEvent
@@ -267,6 +280,13 @@ class MutationEventOutbox {
     }
 	]
 	*/
+
+	/**
+	 * Removes Datastore's internal datetime fields from a
+	 * @param model model name
+	 * @param record model instance
+	 * @returns An instance of the given model.
+	 */
 	private removeTimestampFields(
 		model: string,
 		record: PersistentModel

@@ -1,3 +1,4 @@
+import { parse } from 'graphql';
 import {
 	DataStore as DataStoreType,
 	PersistentModelConstructor,
@@ -14,6 +15,8 @@ import {
 	Comment,
 	testSchema,
 } from './helpers';
+import Observable from 'zen-observable-ts';
+import { NormalModuleReplacementPlugin } from 'webpack';
 
 export { pause };
 
@@ -91,7 +94,9 @@ export function addCommonQueryTests({
 			await addModels(3);
 		});
 
-		afterAll(async () => {
+		afterEach(async () => {
+			await pause(100);
+			await DataStore.start();
 			await DataStore.clear();
 
 			// prevent cross-contamination with other test suites that are not ~literally~
@@ -253,7 +258,9 @@ export function addCommonQueryTests({
 			(syncEngine as any).mutationsProcessor.isReady = () => false;
 		});
 
-		afterAll(async () => {
+		afterEach(async () => {
+			await pause(100);
+			await DataStore.start();
 			await DataStore.clear();
 			(DataStore as any).amplifyConfig.aws_appsync_graphqlEndpoint = '';
 		});
@@ -367,4 +374,198 @@ export function addCommonQueryTests({
 			});
 		});
 	});
+
+	describe.only('Common race conditions', () => {
+		let Comment: PersistentModelConstructor<Comment>;
+		let Model: PersistentModelConstructor<Model>;
+		let Post: PersistentModelConstructor<Post>;
+		let Profile: PersistentModelConstructor<Profile>;
+		let User: PersistentModelConstructor<User>;
+		let adapter: any;
+
+		beforeEach(async () => {
+			DataStore.configure({ storageAdapter });
+
+			// establishing a fake appsync endpoint tricks DataStore into attempting
+			// sync operations, which we'll leverage to monitor how DataStore manages
+			// the outbox.
+			(DataStore as any).amplifyConfig.aws_appsync_graphqlEndpoint =
+				'https://0.0.0.0/does/not/exist/graphql';
+
+			const classes = initSchema(testSchema());
+			({ User, Profile, Comment, Model, Post } = classes as {
+				Comment: PersistentModelConstructor<Comment>;
+				Model: PersistentModelConstructor<Model>;
+				Post: PersistentModelConstructor<Post>;
+				Profile: PersistentModelConstructor<Profile>;
+				User: PersistentModelConstructor<User>;
+			});
+			await DataStore.clear();
+
+			// start() ensures storageAdapter is set
+			await DataStore.stop();
+			await DataStore.start();
+
+			adapter = (DataStore as any).storageAdapter;
+			const db = (adapter as any).db;
+			const syncEngine = (DataStore as any).sync;
+
+			// my jest spy-fu wasn't up to snuff here. but, this succesfully
+			// prevents the mutation process from clearing the mutation queue, which
+			// allows us to observe the state of mutations.
+			jest
+				.spyOn((syncEngine as any).mutationsProcessor, 'isReady')
+				.mockImplementation(() => false);
+		});
+
+		afterEach(async () => {
+			await pause(100);
+			await DataStore.start();
+			await DataStore.clear();
+			await DataStore.stop();
+			// (DataStore as any).amplifyConfig.aws_appsync_graphqlEndpoint = '';
+			console.log('afterEach bottom');
+			jest.clearAllMocks();
+		});
+
+		it('something something something dark side', async () => {
+			const service = new PermissiveGraphQLServiceFake();
+			await DataStore.save(new Post({ title: 'post title' }));
+			console.log('HERE');
+
+			console.log('requests', service.requests);
+
+			await pause(1000);
+
+			expect(true).toBe(true);
+
+			console.log('AND HERE');
+		});
+	});
+
+	/**
+	 * Statefully pretends to be AppSync, with minimal built-in asertions with
+	 * error callbacks and settings to help simulate various conditions.
+	 */
+	class PermissiveGraphQLServiceFake {
+		public requests = [];
+		public tables = new Map<string, Map<string, any[]>>();
+		public observers = new Map<string, Observable<any>[]>();
+
+		constructor() {
+			const { API } = require('@aws-amplify/api');
+			jest.spyOn(API, 'graphql').mockImplementation(async (o: any) => {
+				// console.log('handling request', {
+				// 	...o,
+				// 	query: this.parseQuery(o.query),
+				// });
+				const response = this.request(o);
+				// console.log('response', JSON.stringify(response, null, 2));
+				return response;
+				// return null;
+			});
+		}
+
+		public parseQuery(query) {
+			const q = (parse(query) as any).definitions[0];
+			const operation = q.operation;
+			const name = q.name.value;
+			const selections = q.selectionSet.selections[0];
+			const selection = selections.name.value;
+			const type = selection.match(
+				/^(create|sync|get|list|onCreate|onUpdate|onDelete)(\w+)$/
+			)[1];
+
+			let table;
+			if (type === 'sync' || type === 'list') {
+				table = selection.match(/^(create|sync|get|list)(\w+)s$/)[2];
+			} else {
+				table = selection.match(
+					/^(create|sync|get|list|onCreate|onUpdate|onDelete)(\w+)$/
+				)[2];
+			}
+
+			const items =
+				operation === 'query'
+					? selections?.selectionSet?.selections[0]?.selectionSet?.selections?.map(
+							i => i.name.value
+					  )
+					: selections?.selectionSet?.selections?.map(i => i.name.value);
+
+			return { operation, name, selection, type, table, items };
+		}
+
+		public subscribe(selection, observer) {
+			this.getObservers(selection).push(observer);
+		}
+
+		public getObservers(selection) {
+			if (!this.observers.has(selection)) this.observers.set(selection, []);
+			return this.observers.get(selection);
+		}
+
+		public getTable(name): Map<string, any> {
+			if (!this.tables.has(name))
+				this.tables.set(name, new Map<string, any[]>());
+			return this.tables.get(name);
+		}
+
+		public async request({ query, variables, authMode, authToken }) {
+			const {
+				operation,
+				selection,
+				table: tableName,
+				type,
+			} = this.parseQuery(query);
+			this.requests.push({ query, variables, authMode, authToken });
+			let data;
+
+			const table = this.getTable(tableName);
+
+			if (operation === 'query') {
+				if (type === 'get') {
+					data = { [selection]: table.get(variables.input.id) };
+				} else if (type === 'list' || type === 'sync') {
+					data = {
+						[selection]: {
+							items: [...table.values()],
+							nextToken: null,
+							startedAt: new Date().getTime(),
+						},
+					};
+				}
+			} else if (operation === 'mutation') {
+				if (type === 'create' || type === 'update') {
+					table.set(variables.input.id, variables.input);
+				} else if (type === 'delete') {
+					table.delete(variables.input.id);
+				}
+				data = { [selection]: variables.input };
+			} else if (operation === 'subscription') {
+				// return new Observable(observer => {
+				// 	this.subscribe(selection, observer);
+				// 	// needs to return { value: { data: { [opname]: record }, errors: [] } }
+				// });
+			}
+
+			// observer.next() will go here.
+
+			return {
+				data,
+				errors: [],
+				extensions: {},
+			};
+		}
+	}
+
+	// 	/*
+	// 	const serverData = <
+	// 			GraphQLResult<Record<string, PersistentModel>>
+	// 		>await API.graphql({
+	// 			query,
+	// 			variables: { id: variables.input.id },
+	// 			authMode,
+	// 			authToken,
+	// 		});
+	// 	*/
 }
