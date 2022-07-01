@@ -273,7 +273,7 @@ export class SyncEngine {
 							}
 							//#endregion
 
-							//#region process mutations
+							//#region process mutations (outbox)
 							subscriptions.push(
 								this.mutationsProcessor
 									.start()
@@ -460,6 +460,7 @@ export class SyncEngine {
 	private syncQueriesObservable(): Observable<
 		ControlMessageType<ControlMessage>
 	> {
+		// if not online ... wait. what? what is this doing?
 		if (!this.online) {
 			return Observable.of<ControlMessageType<ControlMessage>>();
 		}
