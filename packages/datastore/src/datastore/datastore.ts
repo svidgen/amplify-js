@@ -1,4 +1,10 @@
-import { Amplify, ConsoleLogger as Logger, Hub, JS } from '@aws-amplify/core';
+import {
+	Amplify,
+	ConsoleLogger as Logger,
+	Hub,
+	JS,
+	JobContext,
+} from '@aws-amplify/core';
 import {
 	Draft,
 	immerable,
@@ -264,11 +270,31 @@ const createTypeClasses: (
 	return classes;
 };
 
+/**
+ * Constructs a model and records it with its metadata in a weakset. Allows for
+ * the separate storage of core model fields and Amplify/DataStore metadata
+ * fields that the customer app does not want exposed.
+ *
+ * @param modelConstructor The model constructor.
+ * @param init Init data that would normally be passed to the constructor.
+ * @returns The initialized model.
+ */
 export declare type ModelInstanceCreator = typeof modelInstanceCreator;
 
+/**
+ * Collection of instantiated models to allow storage of metadata apart from
+ * the model visible to the consuming app -- in case the app doesn't have
+ * metadata fields (_version, _deleted, etc.) exposed on the model itself.
+ *
+ * TODO: Am I understanding this correctly?
+ */
 const instancesMetadata = new WeakSet<
 	ModelInit<PersistentModel & Partial<ModelInstanceMetadata>>
 >();
+
+/**
+ * @see ModelInstanceCreator
+ */
 function modelInstanceCreator<T extends PersistentModel = PersistentModel>(
 	modelConstructor: PersistentModelConstructor<T>,
 	init: ModelInit<T> & Partial<ModelInstanceMetadata>
@@ -747,10 +773,12 @@ class DataStore {
 	/**
 	 * **IMPORTANT!**
 	 *
-	 * Accumulator for functions that can **and MUST** be called when DataStore
-	 * stops. These functions **MUST** be *idempotent promises* that resolve ONLY
+	 * Accumulator for backgrouns things that can **and MUST** be called when
+	 * DataStore stops.
+	 *
+	 * These jobs **MUST** be *idempotent promises* that resolve ONLY
 	 * once the intended jobs are completely finished and/or otherwise destroyed
-	 * and cleaned up with ZERO outstanding ...
+	 * and cleaned up with ZERO outstanding:
 	 *
 	 * 1. side effects (e.g., state changes)
 	 * 1. callbacks
@@ -759,7 +787,8 @@ class DataStore {
 	 * 1. *etc.*
 	 *
 	 * Methods that create pending promises, subscriptions, callbacks, or any
-	 * type of side effect **MUST** register a disposer.
+	 * type of side effect **MUST** be registered with the context. And, a new
+	 * context must be created at each `start()`;
 	 *
 	 * Failure to comply will put DataStore into a highly unpredictable state
 	 * when it needs to stop or clear -- which occurs when restarting with new
@@ -768,10 +797,11 @@ class DataStore {
 	 *
 	 * It is up to the discretion of each disposer whether to wait for job
 	 * completion or to cancel operations and issue failures *as long as the
-	 * disposer returns in a reasonable amount of time.* (Seconds, not
-	 * minutes.)
+	 * disposer returns in a reasonable amount of time.*
+	 *
+	 * (Reasonable = *seconds*, not minutes.)
 	 */
-	private disposers: Promise<void>[] = [];
+	private context: JobContext;
 
 	getModuleName() {
 		return 'DataStore';
@@ -1553,13 +1583,14 @@ class DataStore {
 	};
 
 	/**
-	 * Clears all data from storage and removes all initialization details.
+	 * Does everything stop() does and then clears all data from storage and
+	 * removes all data, schema info, and other initialization details.
 	 *
-	 * Reinitialization is required after clearing. This can be done by
-	 * explicitiliy calling `start()` or any method that implicitly starts
+	 * That said, reinitialization is required after clearing. This can be done
+	 * by explicitiliy calling `start()` or any method that implicitly starts
 	 * DataStore, such as `query()`, `save()`, or `delete()`.
 	 */
-	clear = async function clear() {
+	async clear() {
 		checkSchemaInitialized();
 		if (this.storage === undefined) {
 			// connect to storage so that it can be cleared without fully starting DataStore
@@ -1588,7 +1619,7 @@ class DataStore {
 		this.storage = undefined;
 		this.sync = undefined;
 		this.syncPredicates = new WeakMap<SchemaModel, ModelPredicate<any>>();
-	};
+	}
 
 	/**
 	 * Stops all DataStore sync activities.
@@ -1596,7 +1627,7 @@ class DataStore {
 	 * TODO: "Waits for graceful termination of
 	 * running queries and terminates subscriptions."
 	 */
-	stop = async function stop() {
+	async stop() {
 		if (this.initialized !== undefined) {
 			await this.start();
 		}
@@ -1613,7 +1644,7 @@ class DataStore {
 
 		this.initialized = undefined; // Should re-initialize when start() is called.
 		this.sync = undefined;
-	};
+	}
 
 	/**
 	 * Validates given pagination input from a query and creates a pagination
@@ -1760,7 +1791,10 @@ class DataStore {
 		}, new WeakMap<SchemaModel, ModelPredicate<any>>());
 	}
 
-	// database separation for Amplify Console. Not a public API
+	/**
+	 * A session ID to allow CMS to open databases against multiple apps.
+	 * This session ID is only expected be set by AWS Amplify Studio.
+	 */
 	private retrieveSessionId(): string | undefined {
 		try {
 			const sessionId = sessionStorage.getItem('datastoreSessionId');
