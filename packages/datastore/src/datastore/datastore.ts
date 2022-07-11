@@ -1248,42 +1248,46 @@ class DataStore {
 		return new Observable<SubscriptionMessage<T>>(observer => {
 			let handle: ZenObservable.Subscription;
 
-			this.context.add(async () => {
-				await this.start();
+			this.context
+				.add(async () => {
+					await this.start();
 
-				// Filter the events returned by Storage according to namespace,
-				// append original element data, and subscribe to the observable
-				handle = this.storage
-					.observe(modelConstructor, predicate)
-					.filter(({ model }) => namespaceResolver(model) === USER)
-					.subscribe({
-						next: item =>
-							this.context.add(async () => {
-								// the `element` doesn't necessarily contain all item details or
-								// have related records attached consistently with that of a query()
-								// result item. for consistency, we attach them here.
+					// Filter the events returned by Storage according to namespace,
+					// append original element data, and subscribe to the observable
+					handle = this.storage
+						.observe(modelConstructor, predicate)
+						.filter(({ model }) => namespaceResolver(model) === USER)
+						.subscribe({
+							next: item =>
+								this.context.add(async () => {
+									// the `element` doesn't necessarily contain all item details or
+									// have related records attached consistently with that of a query()
+									// result item. for consistency, we attach them here.
 
-								let message = item;
+									let message = item;
 
-								// as lnog as we're not dealing with a DELETE, we need to fetch a fresh
-								// item from storage to ensure it's fully populated.
-								if (item.opType !== 'DELETE') {
-									const freshElement = await this.query(
-										item.model,
-										item.element.id
-									);
-									message = {
-										...message,
-										element: freshElement as T,
-									};
-								}
+									// as lnog as we're not dealing with a DELETE, we need to fetch a fresh
+									// item from storage to ensure it's fully populated.
+									if (item.opType !== 'DELETE') {
+										const freshElement = await this.query(
+											item.model,
+											item.element.id
+										);
+										message = {
+											...message,
+											element: freshElement as T,
+										};
+									}
 
-								observer.next(message as SubscriptionMessage<T>);
-							}),
-						error: err => observer.error(err),
-						complete: () => observer.complete(),
-					});
-			}, 'datastore observe item');
+									observer.next(message as SubscriptionMessage<T>);
+								}),
+							error: err => observer.error(err),
+							complete: () => observer.complete(),
+						});
+				}, 'datastore observe item')
+				.catch(error => {
+					observer.error(error);
+				});
 
 			// better than no cleaner, but if the subscriber is handling the
 			// complete() message async and not registering with the context,
@@ -1362,68 +1366,74 @@ class DataStore {
 				ModelPredicateCreator.getPredicates(predicate, false) || {};
 			const hasPredicate = !!predicates;
 
-			this.context.add(async () => {
-				try {
-					// first, query and return any locally-available records
-					(await this.query(model, criteria, sortOptions)).forEach(item =>
-						items.set(item.id, item)
-					);
+			this.context
+				.add(async () => {
+					try {
+						// first, query and return any locally-available records
+						(await this.query(model, criteria, sortOptions)).forEach(item =>
+							items.set(item.id, item)
+						);
 
-					// Observe the model and send a stream of updates (debounced).
-					// We need to post-filter results instead of passing criteria through
-					// to have visibility into items that move from in-set to out-of-set.
-					// We need to explicitly remove those items from the existing snapshot.
-					handle = this.observe(model).subscribe(
-						({ element, model, opType }) => {
-							if (
-								hasPredicate &&
-								!validatePredicate(element, predicateGroupType, predicates)
-							) {
+						// Observe the model and send a stream of updates (debounced).
+						// We need to post-filter results instead of passing criteria through
+						// to have visibility into items that move from in-set to out-of-set.
+						// We need to explicitly remove those items from the existing snapshot.
+						handle = this.observe(model).subscribe(
+							({ element, model, opType }) => {
 								if (
-									opType === 'UPDATE' &&
-									(items.has(element.id) || itemsChanged.has(element.id))
+									hasPredicate &&
+									!validatePredicate(element, predicateGroupType, predicates)
 								) {
-									// tracking as a "deleted item" will include the item in
-									// page limit calculations and ensure it is removed from the
-									// final items collection, regardless of which collection(s)
-									// it is currently in. (I mean, it could be in both, right!?)
+									if (
+										opType === 'UPDATE' &&
+										(items.has(element.id) || itemsChanged.has(element.id))
+									) {
+										// tracking as a "deleted item" will include the item in
+										// page limit calculations and ensure it is removed from the
+										// final items collection, regardless of which collection(s)
+										// it is currently in. (I mean, it could be in both, right!?)
+										deletedItemIds.push(element.id);
+									} else {
+										// ignore updates for irrelevant/filtered items.
+										return;
+									}
+								}
+
+								// Flag items which have been recently deleted
+								// NOTE: Merging of separate operations to the same model instance is handled upstream
+								// in the `mergePage` method within src/sync/merger.ts. The final state of a model instance
+								// depends on the LATEST record (for a given id).
+								if (opType === 'DELETE') {
 									deletedItemIds.push(element.id);
 								} else {
-									// ignore updates for irrelevant/filtered items.
-									return;
+									itemsChanged.set(element.id, element);
 								}
+
+								const isSynced =
+									this.sync?.getModelSyncedStatus(model) ?? false;
+
+								const limit =
+									itemsChanged.size - deletedItemIds.length >=
+									this.syncPageSize;
+
+								if (limit || isSynced) {
+									limitTimerRace.resolve();
+								}
+
+								// kicks off every subsequent race as results sync down
+								limitTimerRace.start();
 							}
+						);
 
-							// Flag items which have been recently deleted
-							// NOTE: Merging of separate operations to the same model instance is handled upstream
-							// in the `mergePage` method within src/sync/merger.ts. The final state of a model instance
-							// depends on the LATEST record (for a given id).
-							if (opType === 'DELETE') {
-								deletedItemIds.push(element.id);
-							} else {
-								itemsChanged.set(element.id, element);
-							}
-
-							const isSynced = this.sync?.getModelSyncedStatus(model) ?? false;
-
-							const limit =
-								itemsChanged.size - deletedItemIds.length >= this.syncPageSize;
-
-							if (limit || isSynced) {
-								limitTimerRace.resolve();
-							}
-
-							// kicks off every subsequent race as results sync down
-							limitTimerRace.start();
-						}
-					);
-
-					// returns a set of initial/locally-available results
-					generateAndEmitSnapshot();
-				} catch (err) {
-					observer.error(err);
-				}
-			}, 'datastore observequery startup');
+						// returns a set of initial/locally-available results
+						generateAndEmitSnapshot();
+					} catch (err) {
+						observer.error(err);
+					}
+				}, 'datastore observequery startup')
+				.catch(error => {
+					observer.error(error);
+				});
 
 			/**
 			 * Combines the `items`, `itemsChanged`, and `deletedItemIds` collections into
@@ -1611,6 +1621,8 @@ class DataStore {
 	 * DataStore, such as `query()`, `save()`, or `delete()`.
 	 */
 	async clear() {
+		await this.context.exit();
+
 		checkSchemaInitialized();
 		if (this.storage === undefined) {
 			// connect to storage so that it can be cleared without fully starting DataStore
@@ -1624,8 +1636,6 @@ class DataStore {
 			);
 			await this.storage.init();
 		}
-
-		await this.context.exit();
 
 		if (syncSubscription && !syncSubscription.closed) {
 			syncSubscription.unsubscribe();
