@@ -35,7 +35,7 @@ const nameOf = <T>(name: keyof T) => name;
  */
 const expectType: <T>(param: T) => void = () => {};
 
-describe('DataStore sanity testing checks', () => {
+describe.only('DataStore sanity testing checks', () => {
 	describe('cleans up after itself', () => {
 		// basically, if we spin up our test contexts repeatedly, put some
 		// data in there and do some things, stopping DataStore should
@@ -104,7 +104,7 @@ describe('DataStore sanity testing checks', () => {
 				const { DataStore, Post } = getDataStore();
 
 				// pause if needed
-				if (delay) await new Promise(unPause => setTimeout(unPause, delay));
+				if (delay) await pause(delay);
 
 				// act
 				await script({ DataStore, Post, cycle });
@@ -559,6 +559,9 @@ describe('DataStore observe, unmocked, with fake-indexeddb', () => {
 			Model: PersistentModelConstructor<Model>;
 			Post: PersistentModelConstructor<Post>;
 		});
+	});
+
+	afterEach(async () => {
 		await DataStore.clear();
 	});
 
@@ -756,7 +759,7 @@ describe('DataStore observe, unmocked, with fake-indexeddb', () => {
 	});
 });
 
-describe('DataStore observeQuery, with fake-indexeddb and fake sync', () => {
+describe.only('DataStore observeQuery, with fake-indexeddb and fake sync', () => {
 	//
 	// ~~~~ OH HEY! ~~~~~
 	//
@@ -799,16 +802,12 @@ describe('DataStore observeQuery, with fake-indexeddb and fake sync', () => {
 			Profile: PersistentModelConstructor<Profile>;
 		});
 
-		// This prevents pollution between tests. DataStore may have processes in
-		// flight that need to settle. If we stampede ahead before we do this,
-		// we can end up in very goofy states when we try to re-init the schema.
-		await DataStore.stop();
 		await DataStore.start();
-		await DataStore.clear();
 
-		// Fully faking or mocking the sync engine would be pretty significant.
-		// Instead, we're going to be mocking a few sync engine methods we happen know
-		// `observeQuery()` depends on.
+		// Cut the sync mostly out of the mix for these tests. `observe` and
+		// `observeQuery` operate off of storage events. We can test the core
+		// functionality in local only mode. We just need a *little* mocking to
+		// signal to observeQuery when the "sync" is done vs not.
 		(DataStore as any).sync = {
 			// default to report that models are NOT synced.
 			// set to `true` to signal the model is synced.
@@ -818,11 +817,17 @@ describe('DataStore observeQuery, with fake-indexeddb and fake sync', () => {
 			// not important for this testing. but unsubscribe calls this.
 			// so, it needs to exist.
 			unsubscribeConnectivity: () => {},
+
+			stop: () => {},
 		};
 
 		// how many items to accumulate before `observeQuery()` sends the items
 		// to its subscriber.
 		(DataStore as any).syncPageSize = 1000;
+	});
+
+	afterEach(async () => {
+		await DataStore.clear();
 	});
 
 	test('publishes preexisting local data immediately', async done => {
@@ -915,7 +920,7 @@ describe('DataStore observeQuery, with fake-indexeddb and fake sync', () => {
 	});
 
 	// Fix for: https://github.com/aws-amplify/amplify-js/issues/9325
-	test('can remove newly-unmatched items out of the snapshot on subsequent saves', async done => {
+	test.only('can remove newly-unmatched items out of the snapshot on subsequent saves', async done => {
 		try {
 			// watch for post snapshots.
 			// the first "real" snapshot should include all five posts with "include"
@@ -1002,7 +1007,7 @@ describe('DataStore observeQuery, with fake-indexeddb and fake sync', () => {
 		}
 	});
 
-	test('publishes preexisting local data AND follows up with subsequent saves', done => {
+	test.only('publishes preexisting local data AND follows up with subsequent saves', done => {
 		(async () => {
 			try {
 				const expecteds = [5, 15];
@@ -1379,6 +1384,7 @@ describe('DataStore tests', () => {
 				query: jest.fn(() => []),
 				save: jest.fn(() => []),
 				observe: jest.fn(() => Observable.of()),
+				clear: jest.fn(),
 			}));
 
 			(<any>mock).getNamespace = () => ({ models: {} });
@@ -1386,6 +1392,18 @@ describe('DataStore tests', () => {
 			return { ExclusiveStorage: mock };
 		});
 		({ initSchema, DataStore } = require('../src/datastore/datastore'));
+	});
+
+	afterEach(async () => {
+		try {
+			await DataStore.clear();
+		} catch (error) {
+			// we expect some tests to leave DataStore in a state where this
+			// error will be thrown on clear.
+			if (!error.message.match(/not initialized/)) {
+				throw error;
+			}
+		}
 	});
 
 	test('error on schema not initialized on start', async () => {
@@ -1402,6 +1420,24 @@ describe('DataStore tests', () => {
 		await expect(DataStore.clear()).rejects.toThrow(errorRegex);
 
 		expect(errorLog).toHaveBeenCalledWith(expect.stringMatching(errorRegex));
+	});
+
+	test("non-@models can't be saved", async () => {
+		const { Metadata } = initSchema(testSchema()) as {
+			Metadata: NonModelTypeConstructor<Metadata>;
+		};
+
+		const metadata = new Metadata({
+			author: 'some author',
+			tags: [],
+			rewards: [],
+			penNames: [],
+			nominations: [],
+		});
+
+		await expect(DataStore.save(<any>metadata)).rejects.toThrow(
+			'Object is not an instance of a valid model'
+		);
 	});
 
 	describe('initSchema tests', () => {
@@ -1643,6 +1679,7 @@ describe('DataStore tests', () => {
 						save,
 						query,
 						runExclusive: jest.fn(fn => fn.bind(this, _mock)()),
+						clear: jest.fn(),
 					};
 
 					return _mock;
@@ -1766,6 +1803,7 @@ describe('DataStore tests', () => {
 					runExclusive: jest.fn(() => []),
 					query: jest.fn(() => []),
 					observe: jest.fn(() => Observable.from([])),
+					clear: jest.fn(),
 				}));
 
 				(<any>mock).getNamespace = () => ({ models: {} });
@@ -1795,6 +1833,7 @@ describe('DataStore tests', () => {
 						save,
 						query,
 						runExclusive: jest.fn(fn => fn.bind(this, _mock)()),
+						clear: jest.fn(),
 					};
 
 					return _mock;
@@ -1838,6 +1877,7 @@ describe('DataStore tests', () => {
 						save,
 						query,
 						runExclusive: jest.fn(fn => fn.bind(this, _mock)()),
+						clear: jest.fn(),
 					};
 
 					return _mock;
@@ -1891,6 +1931,7 @@ describe('DataStore tests', () => {
 						save,
 						query,
 						runExclusive: jest.fn(fn => fn.bind(this, _mock)()),
+						clear: jest.fn(),
 					};
 
 					return _mock;
@@ -1971,6 +2012,7 @@ describe('DataStore tests', () => {
 						save,
 						query,
 						runExclusive: jest.fn(fn => fn.bind(this, _mock)()),
+						clear: jest.fn(),
 					};
 
 					return _mock;
@@ -2353,6 +2395,7 @@ describe('DataStore tests', () => {
 						query,
 						delete: _delete,
 						runExclusive: jest.fn(fn => fn.bind(this, _mock)()),
+						clear: jest.fn(),
 					};
 
 					return _mock;
@@ -2412,6 +2455,7 @@ describe('DataStore tests', () => {
 						query,
 						delete: _delete,
 						runExclusive: jest.fn(fn => fn.bind(this, _mock)()),
+						clear: jest.fn(),
 					};
 					return _mock;
 				});
@@ -2480,24 +2524,6 @@ describe('DataStore tests', () => {
 		});
 	});
 
-	test("non-@models can't be saved", async () => {
-		const { Metadata } = initSchema(testSchema()) as {
-			Metadata: NonModelTypeConstructor<Metadata>;
-		};
-
-		const metadata = new Metadata({
-			author: 'some author',
-			tags: [],
-			rewards: [],
-			penNames: [],
-			nominations: [],
-		});
-
-		await expect(DataStore.save(<any>metadata)).rejects.toThrow(
-			'Object is not an instance of a valid model'
-		);
-	});
-
 	describe('Type definitions', () => {
 		let Model: PersistentModelConstructor<Model>;
 
@@ -2511,6 +2537,7 @@ describe('DataStore tests', () => {
 					runExclusive: jest.fn(() => [model]),
 					query: jest.fn(() => [model]),
 					observe: jest.fn(() => Observable.from([])),
+					clear: jest.fn(),
 				}));
 
 				(<any>mock).getNamespace = () => ({ models: {} });
