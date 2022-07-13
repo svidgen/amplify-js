@@ -232,6 +232,8 @@ class SyncProcessor {
 						authMode,
 						authToken,
 					});
+
+					// TODO: onTerminate.then(() => API.cancel(...))
 				} catch (error) {
 					// Catch client-side (GraphQLAuthError) & 401/403 errors here so that we don't continue to retry
 					const clientOrForbiddenErrorMessage =

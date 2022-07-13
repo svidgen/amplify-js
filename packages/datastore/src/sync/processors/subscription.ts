@@ -411,6 +411,8 @@ class SubscriptionProcessor {
 									>(<unknown>API.graphql({ query, variables, ...{ authMode }, authToken }));
 									let subscriptionReadyCallback: () => void;
 
+									// TODO: onTerminate.then(() => API.cancel(...))
+
 									subscriptions[modelDefinition.name][
 										transformerMutationType
 									].push(
