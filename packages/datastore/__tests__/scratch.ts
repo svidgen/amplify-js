@@ -87,6 +87,12 @@ const namePredicateObject = {
 	operand: 'John',
 };
 
+const agePredicateObject = {
+	field: 'age',
+	operator: 'lt',
+	operand: '34',
+};
+
 test('should generate a simple predicate', () => {
 	const predicate = createDataStorePredicate<any>(namePredicateObject);
 
@@ -99,4 +105,41 @@ test('should generate a simple predicate', () => {
 
 	predicate(model as any);
 	expect(namePredicate).toHaveBeenCalledWith(namePredicateObject.operand);
+});
+
+test('should generate a logically nested predicate', () => {
+	const predicateObject = {
+		and: [
+			namePredicateObject,
+			{
+				or: [agePredicateObject],
+			},
+		],
+	};
+
+	const predicate = createDataStorePredicate<any>(predicateObject);
+
+	const namePredicate = jest.fn();
+	const agePredicate = jest.fn();
+
+	const model = {
+		and: andBuilder => {
+			andBuilder({
+				name: {
+					startsWith: namePredicate,
+				},
+				or: orBuilder => {
+					orBuilder({
+						age: {
+							lt: agePredicate,
+						},
+					});
+				},
+			});
+		},
+	};
+
+	predicate(model as any);
+	expect(namePredicate).toHaveBeenCalledWith(namePredicateObject.operand);
+	expect(agePredicate).toHaveBeenCalledWith(agePredicateObject.operand);
 });
