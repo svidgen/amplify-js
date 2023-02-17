@@ -113,14 +113,43 @@ enablePatches();
 
 const logger = new Logger('DataStore');
 
-enum CoordinationMessageType {
+enum CoordinationSignal {
 	Initialization,
+
+	/**
+	 * Signals when a tab wants to clear local storage.
+	 */
 	Clear,
+
+	/**
+	 * Signals that a tab has received a `Clear` message.
+	 */
+	ClearAck,
+
+	/**
+	 * Signals
+	 */
+	ClearReady,
+
+	/**
+	 * Signals when a tab is done clearing local storage.
+	 */
+	ClearFinished,
+
+	/**
+	 * Signals a local mutation has occurred or that a unique
+	 * mutation has been received from AppSync.
+	 *
+	 * To avoid infinite self-DOS, each tab should only propagate
+	 * mutations it has not seen before and which have not arrived
+	 * from another tab.
+	 */
 	Mutation,
 }
 
 type CoordinationMessage = {
-	type: CoordinationMessageType;
+	type: CoordinationSignal;
+	sender: string;
 	model?: string;
 	item?: Record<string, any>;
 };
@@ -141,25 +170,72 @@ type CoordinationMessage = {
  */
 class TabCoordinator {
 	private channel: BroadcastChannel;
+	private id = uuid4();
 
 	constructor() {
 		this.channel = new BroadcastChannel('Amplify.DataStore.Coordination');
 		this.channel.onmessage = this.handleMessage;
 	}
 
-	private handleMessage(evt: MessageEvent) {
+	private async handleMessage(evt: MessageEvent) {
 		const data = evt.data as CoordinationMessage;
 
 		switch (data.type) {
-			case CoordinationMessageType.Clear:
+			case CoordinationSignal.Clear:
+				// acknowledge the signal
+				this.signal(CoordinationSignal.ClearAck);
+
+				// start stopping/disconnecting local stuff.
+				await instance.stop();
+
+				// signal that we've ready for the clear to proceed.
+				this.signal(CoordinationSignal.ClearReady);
 				break;
-			case CoordinationMessageType.Initialization:
+			case CoordinationSignal.ClearAck:
 				break;
-			case CoordinationMessageType.Mutation:
+			case CoordinationSignal.ClearFinished:
 				break;
-				defaut: break;
+			case CoordinationSignal.Initialization:
+				break;
+			case CoordinationSignal.Mutation:
+				break;
 		}
 	}
+
+	/**
+	 * Fire and forget about a signal.
+	 *
+	 * Use this as a courtesy signal for peers.
+	 *
+	 * @param signal
+	 * @param model
+	 * @param item
+	 */
+	public signal(
+		signal: CoordinationSignal,
+		model?: string,
+		item?: Record<string, any>
+	) {
+		// seprated instantiation from sending for explicit type validation.
+		const message: CoordinationMessage = {
+			type: signal,
+			sender: this.id,
+		};
+		this.channel.postMessage(message);
+	}
+
+	/**
+	 * Fire a signal and wait for
+	 *
+	 * @param signal
+	 * @param model
+	 * @param item
+	 */
+	public signalAck(
+		signal: CoordinationSignal,
+		model?: string,
+		item?: Record<string, any>
+	) {}
 }
 
 /**
