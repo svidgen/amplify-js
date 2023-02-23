@@ -489,6 +489,8 @@ export class GroupCondition {
 		breadcrumb: string[] = [],
 		negate = false
 	): Promise<Record<string, any>[]> {
+		const start = performance.now();
+
 		if (!this.isOptimized) {
 			return this.optimized().fetch(storage);
 		}
@@ -606,6 +608,10 @@ export class GroupCondition {
 			resultGroups.push(await storage.query(this.model.builder));
 		}
 
+		const end = performance.now();
+		const duration = end - start;
+		console.log({ duration });
+
 		// PK might be a single field, like `id`, or it might be several fields.
 		// so, we'll need to extract the list of PK fields from an object
 		// and stringify the list for easy comparison / merging.
@@ -614,6 +620,8 @@ export class GroupCondition {
 
 		// will be used for intersecting or unioning results
 		let resultIndex: Map<string, Record<string, any>> | undefined;
+
+		const startAggregation = performance.now();
 
 		if (operator === 'and') {
 			if (resultGroups.length === 0) {
@@ -651,7 +659,17 @@ export class GroupCondition {
 			}
 		}
 
-		return Array.from(resultIndex?.values() || []);
+		const endAggregation = performance.now();
+		const timeAggregation = endAggregation - startAggregation;
+		console.log({ timeAggregation });
+
+		const startArrayatize = performance.now();
+		const results = Array.from(resultIndex?.values() || []);
+		const endArrayatize = performance.now();
+		const timeArrayatize = endArrayatize - startArrayatize;
+		console.log({ timeArrayatize });
+
+		return results;
 	}
 
 	/**

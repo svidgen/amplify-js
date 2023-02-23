@@ -732,12 +732,21 @@ class IndexedDBAdapter implements Adapter {
 			// nothing intelligent we can do with `not` groups unless or until we start
 			// smashing comparison operators against indexes -- at which point we could
 			// perform some reversal here.
+			const start = performance.now();
 			candidateResults = <T[]>await this.getAll(storeName);
+			const end = performance.now();
+			const duration = end - start;
+			console.log('root query', { start, end, duration });
 		}
 
+		const start = performance.now();
 		const filtered = predicateObjs
 			? candidateResults.filter(m => validatePredicate(m, type, predicateObjs))
 			: candidateResults;
+
+		const end = performance.now();
+		const duration = end - start;
+		console.log('root query filter', { start, end, duration });
 
 		return filtered;
 	}

@@ -376,7 +376,7 @@ describe('IndexedDB benchmarks', () => {
 	 * vs non-indexed queries, as well as demonstrate a baseline for how much of a difference we're
 	 * looking for.
 	 */
-	test('[SANITY CHECK] PK queries against measurably faster than queries against non-key fields', async () => {
+	test.only('[SANITY CHECK] PK queries against measurably faster than queries against non-key fields', async () => {
 		// get by PK using the `byId` index is sable behavior, AFAIK. so, we'll benchmark against that.
 		// saving records is very heavy. to stay within test time limits, we'll seed a "small" number of
 		// records a query "many" times.
@@ -608,12 +608,15 @@ describe('IndexedDB benchmarks', () => {
 			return child;
 		});
 
+		console.log('start');
 		const time = await benchmark(async () => {
 			const fetched = await DataStore.query(CompositePKParent, p =>
 				p.children.or(child => children.map(c => child.childId.eq(c.childId)))
 			);
 			expect(fetched.length).toBe(100);
 		}, 1);
+
+		console.log({ time });
 
 		expect(time).toBeLessThan(100);
 	});
