@@ -610,7 +610,7 @@ export class GroupCondition {
 
 		const end = performance.now();
 		const duration = end - start;
-		console.log({ duration });
+		console.log('group fetch', JSON.stringify({ ast: this.toAST(), duration }));
 
 		// PK might be a single field, like `id`, or it might be several fields.
 		// so, we'll need to extract the list of PK fields from an object
