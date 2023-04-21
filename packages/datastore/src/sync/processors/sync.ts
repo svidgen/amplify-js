@@ -11,6 +11,7 @@ import {
 	ErrorHandler,
 	ProcessName,
 	AmplifyContext,
+	SyncError,
 } from '../../types';
 import {
 	buildGraphQLOperation,
@@ -143,6 +144,7 @@ class SyncProcessor {
 				);
 				return response;
 			} catch (error) {
+				console.log('ok here', error);
 				authModeAttempts++;
 				if (authModeAttempts >= readAuthModes.length) {
 					const authMode = readAuthModes[authModeAttempts - 1];
@@ -389,22 +391,10 @@ class SyncProcessor {
 											onTerminate
 										));
 									} catch (error) {
-										try {
-											await this.errorHandler({
-												recoverySuggestion:
-													'Ensure app code is up to date, auth directives exist and are correct on each model, and that server-side data has not been invalidated by a schema change. If the problem persists, search for or create an issue: https://github.com/aws-amplify/amplify-js/issues',
-												localModel: null!,
-												message: error.message,
-												model: modelDefinition.name,
-												operation: null!,
-												errorType: getSyncErrorType(error),
-												process: ProcessName.sync,
-												remoteModel: null!,
-												cause: error,
-											});
-										} catch (e) {
-											logger.error('Sync error handler failed with:', e);
-										}
+										await this.safelyReportError({
+											modelName: modelDefinition.name,
+											cause: error,
+										});
 										return res();
 									}
 
@@ -448,6 +438,51 @@ class SyncProcessor {
 		await this.runningProcesses.close();
 		await this.runningProcesses.open();
 		logger.debug('sync processor stopped');
+	}
+
+	/**
+	 * Reports an error to `this.errorHandler` using a standard default recovery suggestion,
+	 * errorType, etc. and logging any exceptions that occur in the `errorHandler` if needed.
+	 *
+	 * (`errorType` will be derived from the `cause` message.)
+	 *
+	 * Currently only used for reporting errors that occur while fetching data. Therefore,
+	 * the only `operation` this method reports is "list".
+	 *
+	 * @param param0 modelName and cause (Error)
+	 */
+	private async safelyReportError({
+		modelName,
+		cause,
+	}: {
+		/**
+		 * The name of the model the operation failed on.
+		 */
+		modelName: string;
+
+		/**
+		 * The underlying error that caused the failure.
+		 *
+		 * This should be the error recieved from the `catch()` block from a
+		 */
+		cause: Error;
+	}) {
+		try {
+			await this.errorHandler({
+				recoverySuggestion:
+					'Ensure app code is up to date, auth directives exist and are correct on each model, and that server-side data has not been invalidated by a schema change. If the problem persists, search for or create an issue: https://github.com/aws-amplify/amplify-js/issues',
+				localModel: null!,
+				message: cause.message,
+				model: modelName,
+				operation: 'list',
+				errorType: getSyncErrorType(cause),
+				process: ProcessName.sync,
+				remoteModel: null!,
+				cause,
+			});
+		} catch (e) {
+			logger.error('Sync error handler failed with:', e);
+		}
 	}
 }
 

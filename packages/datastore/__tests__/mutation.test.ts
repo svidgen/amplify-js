@@ -81,7 +81,7 @@ describe('Jittered backoff', () => {
 describe('MutationProcessor', () => {
 	let mutationProcessor: MutationProcessor;
 
-	beforeAll(async () => {
+	beforeEach(async () => {
 		mutationProcessor = await instantiateMutationProcessor();
 	});
 
@@ -180,6 +180,27 @@ describe('MutationProcessor', () => {
 				})
 			);
 		});
+	});
+	it('calls event handler when mutations are unauthorized', async () => {
+		jest.spyOn(mutationProcessor, 'resume');
+
+		mockRetry.mockImplementationOnce(() =>
+			Promise.reject({ message: 'Request failed with status code 401' })
+		);
+
+		await mutationProcessor.resume();
+
+		// TODO: can we actually hook into error handler here?
+		expect(true).toBe(false);
+
+		// expect(hubDispatchMock).toBeCalledWith('datastore', {
+		// 	event: 'mutationError',
+		// 	data: {
+		// 		errorType: 'Unauthorized',
+		// 		authModes: ['API_KEY'],
+		// 		modelName: Model.name,
+		// 	},
+		// });
 	});
 	afterAll(() => {
 		jest.restoreAllMocks();

@@ -413,6 +413,76 @@ describe('Sync', () => {
 	});
 });
 
+describe('Sync', () => {
+	describe('retrievePage', () => {
+		beforeEach(() => {
+			window.sessionStorage.clear();
+			jest.resetModules();
+			jest.resetAllMocks();
+		});
+
+		describe('error handler', () => {
+			const errorHandler = jest.fn();
+
+			beforeEach(async () => {
+				window.sessionStorage.clear();
+				jest.resetModules();
+				jest.resetAllMocks();
+				errorHandler.mockClear();
+			});
+
+			test('unauthorized error', async () => {
+				const syncProcessor = jitteredRetrySyncProcessorSetup({
+					errorHandler,
+					rejectResponse: {
+						data: null,
+						errors: [
+							{
+								message: 'Request failed with status code 403',
+							},
+						],
+					},
+				});
+
+				// sync processor `retrievePage` usese this map to retrieve pre-generated
+				// opname and query for each model. so, an entry need to exist, but we don't
+				// actually care what they are for this test.
+				syncProcessor.typeQuery.set(defaultModelDefinition, ['', '']);
+
+				try {
+					await syncProcessor.retrievePage(
+						// modelDefinition
+						defaultModelDefinition,
+
+						// lastSync
+						0,
+
+						// nextToken
+						'',
+
+						// limit
+						10,
+
+						// filter
+						undefined,
+
+						// onTerminate
+						new Promise(() => {})
+					);
+				} catch (e) {}
+
+				expect(errorHandler).toHaveBeenCalledWith(
+					expect.objectContaining({
+						operation: 'syncPosts',
+						process: 'sync',
+						errorType: 'Unauthorized',
+					})
+				);
+			});
+		});
+	});
+});
+
 function jitteredRetrySyncProcessorSetup({
 	rejectResponse,
 	resolveResponse,
