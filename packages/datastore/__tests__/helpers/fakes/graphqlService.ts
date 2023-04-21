@@ -12,19 +12,22 @@ import { initSchema as _initSchema } from '../../../src/datastore/datastore';
 
 type GraphqlRequest = {
 	query: string;
-	variables: Record<string, string | number | boolean | undefined | null>;
+	variables: Record<string, any>;
 	authMode?: string | null;
 	authToken?: string | null;
 };
 
 type GraphqlResponse<T extends string = string> =
-	| {
-			data: {
-				[k in T]: {
-					items: Record<string, any>[];
-				};
-			};
-	  }
+	| Promise<{
+			data:
+				| {
+						[k in T]: {
+							items: Record<string, any>[];
+						};
+				  }
+				| null;
+			errors?: Record<string, any>[];
+	  }>
 	| ZenObservable.Subscription;
 
 type Middleware = (
@@ -416,7 +419,12 @@ export class FakeGraphQLService {
 		return chain();
 	}
 
-	public request({ query, variables, authMode, authToken }: GraphqlRequest) {
+	public request({
+		query,
+		variables,
+		authMode,
+		authToken,
+	}: GraphqlRequest): GraphqlResponse {
 		this.log('API Request', {
 			query,
 			variables: JSON.stringify(variables, null, 2),
@@ -425,7 +433,7 @@ export class FakeGraphQLService {
 		});
 
 		if (!this.isConnected) {
-			return this.disconnectedError();
+			return Promise.resolve(this.disconnectedError());
 		}
 
 		const parsed = this.parseQuery(query);
