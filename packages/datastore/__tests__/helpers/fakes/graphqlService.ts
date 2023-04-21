@@ -10,6 +10,30 @@ import { validatePredicate, getTimestampFields } from '../../../src/util';
 import { ModelPredicateCreator } from '../../../src/predicates';
 import { initSchema as _initSchema } from '../../../src/datastore/datastore';
 
+type GraphqlRequest = {
+	query: string;
+	variables: Record<string, string | number | boolean | undefined | null>;
+	authMode?: string | null;
+	authToken?: string | null;
+};
+
+type GraphqlResponse<T extends string = string> =
+	| {
+			data: {
+				[k in T]: {
+					items: Record<string, any>[];
+				};
+			};
+	  }
+	| ZenObservable.Subscription;
+
+type Middleware = (
+	request: GraphqlRequest,
+	next: Middleware
+) => GraphqlResponse;
+
+type TerminalHandler = (request: GraphqlRequest) => GraphqlResponse;
+
 /**
  * Statefully pretends to be AppSync, with minimal built-in asertions with
  * error callbacks and settings to help simulate various conditions.
@@ -30,6 +54,7 @@ export class FakeGraphQLService {
 		string,
 		ZenObservable.SubscriptionObserver<any>[]
 	>();
+	public middleware: Middleware[] = [];
 
 	constructor(public schema: Schema) {
 		for (const model of Object.values(schema.models)) {
@@ -382,11 +407,16 @@ export class FakeGraphQLService {
 	 *
 	 * @param param0
 	 */
-	public graphql({ query, variables, authMode, authToken }) {
-		return this.request({ query, variables, authMode, authToken });
+	public graphql(request: GraphqlRequest) {
+		const chain = this.middleware.reduceRight(
+			(next, middleware) => () => middleware(request, next),
+			() => this.request(request)
+		);
+
+		return chain();
 	}
 
-	public request({ query, variables, authMode, authToken }) {
+	public request({ query, variables, authMode, authToken }: GraphqlRequest) {
 		this.log('API Request', {
 			query,
 			variables: JSON.stringify(variables, null, 2),

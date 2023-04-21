@@ -26,6 +26,13 @@ async function waitForEmptyOutboxOrError(service) {
 	return await Promise.race([waitForEmptyOutbox(), pendingError]);
 }
 
+// async function waitForErrorHandler(DataStore: any) {
+// 	const message = null;
+// 	DataStore.configure({
+// 		errorHandler
+// 	})
+// }
+
 describe('DataStore sync engine', () => {
 	// establish types :)
 	let {
@@ -1049,4 +1056,6 @@ describe('DataStore sync engine', () => {
 		`);
 		});
 	});
+
+	describe('error handling', () => {});
 });
