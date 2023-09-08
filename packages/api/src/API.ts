@@ -285,3 +285,5 @@ declare type V6Client<T extends Record<any, any> = never> = ExcludeNeverFields<{
 
 export const API = new APIClass(null);
 // Amplify.register(API);
+
+export const generateClient = API.generateClient;

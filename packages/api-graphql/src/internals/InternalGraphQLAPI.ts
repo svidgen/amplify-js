@@ -19,6 +19,7 @@ import {
 	// getAmplifyUserAgent,
 	// INTERNAL_AWS_APPSYNC_REALTIME_PUBSUB_PROVIDER,
 	fetchAuthSession,
+	Cache,
 } from '@aws-amplify/core';
 // TODO V6 - not available?
 // should work with yarn bootstrap
@@ -31,7 +32,6 @@ import {
 } from '@aws-amplify/core/internals/utils';
 // import { InternalPubSub } from '@aws-amplify/pubsub/internals';
 // import { InternalAuth } from '@aws-amplify/auth/internals';
-import { Cache } from '@aws-amplify/core';
 import {
 	GraphQLAuthError,
 	GraphQLOptions,

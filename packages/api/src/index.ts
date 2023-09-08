@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export { GraphQLQuery, GraphQLSubscription } from './types';
-export { API, APIClass } from './API';
+export { API, APIClass, generateClient } from './API';
 export {
 	graphqlOperation,
 	GraphQLAuthError,
