@@ -41,6 +41,7 @@
   },
   "homepage": "https://aws-amplify.github.io/",
   "devDependencies": {
+	"@types/jest": "^24.0.18",
     "@types/zen-observable": "^0.8.0"
   },
   "files": [
@@ -54,7 +55,6 @@
     "@aws-amplify/auth": "6.0.0",
     "@aws-amplify/core": "6.0.0",
     "@aws-sdk/types": "3.387.0",
-    "@types/jest": "^29.5.4",
     "graphql": "15.8.0",
     "tslib": "^1.8.0",
     "uuid": "^3.2.1",

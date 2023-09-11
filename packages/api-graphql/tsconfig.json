@@ -7,5 +7,5 @@
 		"skipLibCheck": true,
 		"types": ["node", "lodash", "jest"]
 	},
-	"include": ["./src"]
+	"include": ["./src/*"]
 }
