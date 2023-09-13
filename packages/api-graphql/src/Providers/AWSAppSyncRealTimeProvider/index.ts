@@ -91,7 +91,8 @@ type ParsedMessagePayload = {
 
 export interface AWSAppSyncRealTimeProviderOptions {
 	appSyncGraphqlEndpoint?: string;
-	authenticationType?: GraphQLAuthMode;
+	// authenticationType?: GraphQLAuthMode;
+	authenticationType?: string;
 	query?: string;
 	variables?: Record<string, unknown>;
 	apiKey?: string;
@@ -189,13 +190,7 @@ export class AWSAppSyncRealTimeProvider {
 		options?: AWSAppSyncRealTimeProviderOptions,
 		customUserAgentDetails?: CustomUserAgentDetails
 	): Observable<Record<string, unknown>> {
-		const {
-			appSyncGraphqlEndpoint,
-			region,
-			query,
-			variables,
-			authenticationType,
-		} = options;
+		const { appSyncGraphqlEndpoint } = options;
 
 		return new Observable(observer => {
 			if (!options || !appSyncGraphqlEndpoint) {
@@ -218,13 +213,7 @@ export class AWSAppSyncRealTimeProvider {
 
 						const startSubscriptionPromise =
 							this._startSubscriptionWithAWSAppSyncRealTime({
-								options: {
-									query,
-									variables,
-									region,
-									authenticationType,
-									appSyncGraphqlEndpoint,
-								},
+								options,
 								observer,
 								subscriptionId,
 								customUserAgentDetails,
@@ -698,6 +687,8 @@ export class AWSAppSyncRealTimeProvider {
 						additionalHeaders,
 					});
 
+					console.log('authHeader', authHeader);
+
 					const headerString = authHeader ? JSON.stringify(authHeader) : '';
 					const headerQs = Buffer.from(headerString).toString('base64');
 
@@ -873,6 +864,7 @@ export class AWSAppSyncRealTimeProvider {
 
 	private async _awsRealTimeHeaderBasedAuth({
 		authenticationType,
+		apiKey,
 		payload,
 		canonicalUri,
 		appSyncGraphqlEndpoint,
@@ -890,19 +882,26 @@ export class AWSAppSyncRealTimeProvider {
 			custom: this._customAuthHeader,
 		};
 
-		if (!authenticationType || !headerHandler[authenticationType.type]) {
+		console.log({ authenticationType });
+
+		const normalizedAuthType =
+			{
+				API_KEY: 'apiKey',
+				AWS_IAM: 'iam',
+				OPENID_CONNECT: 'jwt',
+				AMAZON_COGNITO_USER_POOLS: 'jwt',
+				AWS_LAMBDA: 'custom',
+			}[authenticationType] || authenticationType;
+
+		if (!normalizedAuthType || !headerHandler[normalizedAuthType]) {
 			logger.debug(`Authentication type ${authenticationType} not supported`);
 			return undefined;
 		} else {
-			const handler = headerHandler[authenticationType.type];
+			const handler = headerHandler[authenticationType];
 
 			const { host } = url.parse(appSyncGraphqlEndpoint ?? '');
 
 			logger.debug(`Authenticating with ${authenticationType}`);
-			let apiKey;
-			if (authenticationType.type === 'apiKey') {
-				apiKey = authenticationType.apiKey;
-			}
 			const result = await handler({
 				payload,
 				canonicalUri,

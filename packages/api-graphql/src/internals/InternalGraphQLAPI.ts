@@ -161,6 +161,8 @@ export class InternalGraphQLAPIClass {
 		// 	defaultAuthenticationType || aws_appsync_authenticationType || 'AWS_IAM';
 
 		const config = Amplify.getConfig();
+		console.log('fetched config', { config });
+
 		const {
 			region: region,
 			endpoint: appSyncGraphqlEndpoint,
@@ -190,6 +192,7 @@ export class InternalGraphQLAPIClass {
 					Authorization: null,
 					'X-Api-Key': apiKey,
 				};
+				console.log('setting api key', headers);
 				break;
 			case 'AWS_IAM':
 				// 8
@@ -202,7 +205,7 @@ export class InternalGraphQLAPIClass {
 					// TODO V6 (commented for debugging)
 					// throw new Error(GraphQLAuthError.NO_CREDENTIALS);
 					console.log(session);
-					debugger;
+					// debugger;
 				}
 				break;
 			case 'OPENID_CONNECT':
@@ -315,6 +318,8 @@ export class InternalGraphQLAPIClass {
 		const { operation: operationType } =
 			operationDef as OperationDefinitionNode;
 
+		console.log({ query, operationDef, operationType });
+
 		const headers = additionalHeaders || {};
 
 		// if an authorization header is set, have the explicit authToken take precedence
@@ -357,6 +362,7 @@ export class InternalGraphQLAPIClass {
 				return responsePromise;
 			case 'subscription':
 				// debugger;
+				console.log('headers outside subscribe', headers);
 				return this._graphqlSubscribe(
 					{ query, variables, authMode },
 					headers,
@@ -468,9 +474,11 @@ export class InternalGraphQLAPIClass {
 			// TODO V6
 			// @ts-ignore
 			// 7
-			debugger;
+			// debugger;
+			console.log({ endpoint, headers, body, region });
 			response = await post(endpoint, { headers, body, region });
-			debugger;
+			console.log({ response });
+			// debugger;
 		} catch (err) {
 			// If the exception is because user intentionally
 			// cancelled the request, do not modify the exception
@@ -479,7 +487,7 @@ export class InternalGraphQLAPIClass {
 			// if (this._api.isCancel(err)) {
 			// 	throw err;
 			// }
-			debugger;
+			// debugger;
 			response = {
 				data: {},
 				errors: [new GraphQLError(err.message, null, null, null, null, err)],
@@ -490,7 +498,7 @@ export class InternalGraphQLAPIClass {
 
 		if (errors && errors.length) {
 			// 8
-			debugger;
+			// debugger;
 			throw response;
 		}
 
@@ -498,7 +506,7 @@ export class InternalGraphQLAPIClass {
 		// DO WE EVER GET HERE?!?!?
 		// WHAT HAPPENS?!?!?!?!?!?!
 		console.log('RESPONSE FROM POST', response);
-		debugger;
+		// debugger;
 		return response;
 	}
 
@@ -548,21 +556,23 @@ export class InternalGraphQLAPIClass {
 		additionalHeaders = {},
 		customUserAgentDetails?: CustomUserAgentDetails
 	): Observable<any> {
-		debugger;
+		// debugger;
+		const { AppSync } = Amplify.getConfig().API ?? {};
 		if (!this.appSyncRealTime) {
-			const { AppSync } = Amplify.getConfig().API ?? {};
-
 			this.appSyncRealTime = new AWSAppSyncRealTimeProvider();
-
-			return this.appSyncRealTime.subscribe({
-				query: print(query as DocumentNode),
-				variables,
-				appSyncGraphqlEndpoint: AppSync.endpoint,
-				region: AppSync.region,
-				authenticationType: AppSync.defaultAuthMode,
-			});
 		}
+		console.log({ AppSync });
+		return this.appSyncRealTime.subscribe({
+			query: print(query as DocumentNode),
+			variables,
+			appSyncGraphqlEndpoint: AppSync.endpoint,
+			region: AppSync.region,
+			authenticationType: AppSync.defaultAuthMode as any,
+			apiKey: AppSync.apiKey,
+			additionalHeaders,
+		});
 	}
+
 	// if (InternalPubSub && typeof InternalPubSub.subscribe === 'function') {
 	// 	return InternalPubSub.subscribe(
 	// 		'',
