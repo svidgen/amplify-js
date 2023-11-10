@@ -4391,4 +4391,299 @@ describe('generateClient', () => {
 			});
 		});
 	});
+
+	describe.only('related model mutations', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+			Amplify.configure(configFixture as any);
+		});
+
+		test('create with hasOne', async () => {
+			const spy = mockApiResponse({
+				data: {
+					createTodo: {
+						__typename: 'Todo',
+						...serverManagedFields,
+						name: 'some name',
+						description: 'something something',
+						todoMetaId: 'meta-data-id-i-guess',
+					},
+				},
+			});
+
+			const client = generateClient<Schema>({ amplify: Amplify });
+			const { data } = await client.models.Todo.create({
+				name: 'some name',
+				description: 'something something',
+				meta: {
+					id: 'meta-data-id-i-guess',
+				},
+			});
+
+			expect(spy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					options: expect.objectContaining({
+						headers: expect.objectContaining({
+							'X-Api-Key': 'FAKE-KEY',
+						}),
+						body: {
+							query: expect.stringContaining('createTodo(input: $input)'),
+							variables: {
+								input: {
+									name: 'some name',
+									description: 'something something',
+									todoMetaId: 'meta-data-id-i-guess',
+								},
+							},
+						},
+					}),
+				})
+			);
+		});
+
+		test('create with "blessed" hasOne from API response', async () => {
+			const client = generateClient<Schema>({ amplify: Amplify });
+
+			const metaSpy = mockApiResponse({
+				data: {
+					getTodoMetadata: {
+						__typename: 'TodoMetadata',
+						...serverManagedFields,
+						id: 'some-metadata-id',
+						data: 'something something something',
+					},
+				},
+			});
+
+			const { data: meta } = await client.models.TodoMetadata.get({
+				id: 'whatever',
+			});
+
+			const spy = mockApiResponse({
+				data: {
+					createTodo: {
+						__typename: 'Todo',
+						...serverManagedFields,
+						name: 'some name',
+						description: 'something something',
+						todoMetaId: 'some-metadata-id',
+					},
+				},
+			});
+
+			const { data } = await client.models.Todo.create({
+				name: 'some name',
+				description: 'something something',
+				meta,
+			});
+
+			expect(spy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					options: expect.objectContaining({
+						headers: expect.objectContaining({
+							'X-Api-Key': 'FAKE-KEY',
+						}),
+						body: {
+							query: expect.stringContaining('createTodo(input: $input)'),
+							variables: {
+								input: {
+									name: 'some name',
+									description: 'something something',
+									todoMetaId: meta.id,
+								},
+							},
+						},
+					}),
+				})
+			);
+		});
+
+		test('create with hasMany - reciprocal belongsTo', async () => {
+			const client = generateClient<Schema>({ amplify: Amplify });
+
+			const spy = mockApiResponse({
+				data: {
+					// doesn't matter
+					createNote: {
+						__typename: 'Note',
+						...serverManagedFields,
+					},
+				},
+			});
+
+			const { data: note } = await client.models.Note.create({
+				body: 'some body',
+				todo: {
+					id: 'heres-a-todo',
+				},
+			});
+
+			expect(spy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					options: expect.objectContaining({
+						headers: expect.objectContaining({
+							'X-Api-Key': 'FAKE-KEY',
+						}),
+						body: {
+							query: expect.stringContaining('createNote(input: $input)'),
+							variables: {
+								input: {
+									body: 'some body',
+									todoNotesId: 'heres-a-todo',
+								},
+							},
+						},
+					}),
+				})
+			);
+		});
+
+		test('create with "blessed" hasMany from API response - reciprocal belongsTo', async () => {
+			const client = generateClient<Schema>({ amplify: Amplify });
+
+			mockApiResponse({
+				data: {
+					createTodo: {
+						__typename: 'Todo',
+						...serverManagedFields,
+						id: 'heres-a-todo',
+						name: 'some name',
+						description: 'something something',
+					},
+				},
+			});
+
+			const { data: todo } = await client.models.Todo.create({
+				name: 'some name',
+				description: 'something something',
+			});
+
+			const spy = mockApiResponse({
+				data: {
+					// doesn't matter
+					createNote: {
+						__typename: 'Note',
+						...serverManagedFields,
+					},
+				},
+			});
+
+			await client.models.Note.create({
+				body: 'some body',
+				todo,
+			});
+
+			expect(spy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					options: expect.objectContaining({
+						headers: expect.objectContaining({
+							'X-Api-Key': 'FAKE-KEY',
+						}),
+						body: {
+							query: expect.stringContaining('createNote(input: $input)'),
+							variables: {
+								input: {
+									body: 'some body',
+									todoNotesId: 'heres-a-todo',
+								},
+							},
+						},
+					}),
+				})
+			);
+		});
+
+		test('create with hasMany - no belongsTo', async () => {
+			const client = generateClient<Schema>({ amplify: Amplify });
+
+			const spy = mockApiResponse({
+				data: {
+					// doesn't matter
+					createMember: {
+						__typename: 'Member',
+						...serverManagedFields,
+					},
+				},
+			});
+
+			const { data: note } = await client.models.Member.create({
+				name: 'some body',
+				team: {
+					id: 'something',
+				},
+			});
+
+			expect(spy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					options: expect.objectContaining({
+						headers: expect.objectContaining({
+							'X-Api-Key': 'FAKE-KEY',
+						}),
+						body: {
+							query: expect.stringContaining('createTeam(input: $input)'),
+							variables: {
+								input: {
+									name: 'some body',
+									teamMembersId: 'something',
+								},
+							},
+						},
+					}),
+				})
+			);
+		});
+
+		test('create with "blessed" hasMany from API response - no belongsTo', async () => {
+			const client = generateClient<Schema>({ amplify: Amplify });
+
+			mockApiResponse({
+				data: {
+					createTeam: {
+						__typename: 'Team',
+						...serverManagedFields,
+						id: 'heres-a-team',
+						mantra: 'a mantra',
+					},
+				},
+			});
+
+			const { data: team } = await client.models.Team.create({
+				mantra: 'a mantra',
+			});
+
+			const spy = mockApiResponse({
+				data: {
+					// doesn't matter
+					createMember: {
+						__typename: 'Member',
+						...serverManagedFields,
+					},
+				},
+			});
+
+			await client.models.Member.create({
+				name: 'some body',
+				team,
+			});
+
+			expect(spy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					options: expect.objectContaining({
+						headers: expect.objectContaining({
+							'X-Api-Key': 'FAKE-KEY',
+						}),
+						body: {
+							query: expect.stringContaining('createMember(input: $input)'),
+							variables: {
+								input: {
+									name: 'some body',
+									teamMembersId: 'heres-a-team',
+								},
+							},
+						},
+					}),
+				})
+			);
+		});
+	});
 });

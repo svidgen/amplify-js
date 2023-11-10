@@ -17,7 +17,7 @@ const schema = a.schema({
 		.authorization([a.allow.public('apiKey'), a.allow.owner()]),
 	TodoMetadata: a
 		.model({
-			data: a.json(),
+			data: a.string(),
 		})
 		.authorization([a.allow.public('apiKey'), a.allow.owner()]),
 	ThingWithCustomerOwnerField: a
@@ -50,6 +50,19 @@ const schema = a.schema({
 			otherField: a.string(),
 		})
 		.identifier(['cpk_cluster_key', 'cpk_sort_key']),
+	Team: a
+		.model({
+			mantra: a.string(),
+			members: a.hasMany('Member'),
+		})
+		.authorization([a.allow.public()]),
+
+	Member: a
+		.model({
+			name: a.string(),
+			dateOfBirth: a.date(),
+		})
+		.authorization([a.allow.public()]),
 });
 
 export type Schema = ClientSchema<typeof schema>;
