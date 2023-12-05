@@ -321,6 +321,8 @@ function defaultSelectionSetForModel(modelDefinition: SchemaModel): string[] {
 		.map(({ type, name }) => typeof type === 'string' && name) // Default selection set omits model fields
 		.filter(Boolean);
 
+	console.log({ fields, explicitFields });
+
 	// fields used for owner auth rules that may or may not also
 	// be explicit on the model.
 	const ownerFields = resolveOwnerFields(modelDefinition);
