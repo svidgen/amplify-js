@@ -424,6 +424,51 @@ describe('DataStore sync engine', () => {
 			expect(savedItem.body).toEqual(m.body);
 		});
 
+		// Can we support this?
+		// See: https://github.com/aws-amplify/amplify-js/issues/11241#issuecomment-1656979278
+		test.skip('sends all all originally defined fields saving in copyOf an un-saved model', async () => {
+			const dateCreated = new Date().toISOString();
+
+			// For debugging.
+			// graphqlService.log = (channel: string, ...messages: string[]) => {
+			// 	channel == 'API Request' && console.log(channel, ...messages);
+			// };
+
+			const unsaved = new Model({
+				field1: 'whatever and ever',
+				optionalField1: 'some other field value',
+				dateCreated,
+				metadata: null,
+			});
+
+			const copied = Model.copyOf(unsaved, draft => {
+				draft.field1 = 'new other field value';
+			});
+
+			await DataStore.save(copied);
+
+			// I don't track down why this is the case, but one symptom of the wrong fields
+			// being sent can be that this promise never resolves. So, if this test
+			// hangs here, look at `channel: "API Request"` messages from `graphqlService.log()`
+			// to ensure the expected fields are being sent.
+			await waitForEmptyOutbox();
+
+			const table = graphqlService.tables.get('Model')!;
+			expect(table.size).toEqual(1);
+
+			const [mutation] = graphqlService.requests
+				.filter(r => r.operation === 'mutation' && r.tableName === 'Model')
+				.map(req => req.variables.input);
+
+			expect(mutation).toEqual(
+				expect.objectContaining({
+					field1: 'whatever and ever',
+					optionalField1: 'some other field value',
+					dateCreated,
+				}),
+			);
+		});
+
 		test('uses model create subscription event to populate sync protocol metadata', async () => {
 			const post = await DataStore.save(new Post({ title: 'post title' }));
 			await waitForEmptyOutbox();
